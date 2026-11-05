@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: tools
+        working-directory: tools
+        run: npm ci && npm test && npx tsc --noEmit
+        env:
+          GROD_ADB: '0'
+      - name: extension
+        working-directory: extension
+        run: npm test
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: android
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug
