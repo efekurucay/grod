@@ -9,6 +9,7 @@ data class Matcher(
     val viewId: String? = null,
     val text: String? = null,
     val desc: String? = null,
+    val descContains: String? = null,
     val selected: Boolean? = null,
 )
 
@@ -19,6 +20,7 @@ data class AndroidRule(
     val feed: List<Matcher>,
     val exempt: List<Matcher>,
     val cover: List<Matcher>,
+    val mask: List<Matcher>,
     val action: Action,
 )
 
@@ -54,8 +56,8 @@ class InvalidRulesException(message: String) : Exception(message)
 object Rules {
     private val ID = Regex("^[a-z0-9]+(-[a-z0-9]+)*$")
     private val PLATFORMS = listOf("web", "android", "macos")
-    private val ANDROID_KEYS = setOf("packages", "feed", "exempt", "cover", "action")
-    private val MATCHER_KEYS = setOf("viewId", "text", "desc", "selected")
+    private val ANDROID_KEYS = setOf("packages", "feed", "exempt", "cover", "mask", "action")
+    private val MATCHER_KEYS = setOf("viewId", "text", "desc", "descContains", "selected")
 
     fun parse(json: String): RuleSet {
         val root = try {
@@ -110,6 +112,7 @@ object Rules {
             feed = parseMatchers(o, "feed", path),
             exempt = parseMatchers(o, "exempt", path),
             cover = parseMatchers(o, "cover", path),
+            mask = parseMatchers(o, "mask", path),
             action = action,
         )
     }
@@ -127,7 +130,10 @@ object Rules {
         if (o.length() == 0) fail(path, "needs at least one field")
         fun str(k: String) = o.opt(k)?.let { it as? String ?: fail("$path.$k", "must be a string") }
         val selected = o.opt("selected")?.let { it as? Boolean ?: fail("$path.selected", "must be a boolean") }
-        return Matcher(str("viewId"), str("text"), str("desc"), selected)
+        val descContains = str("descContains")
+        // An empty substring would match every node that has a description.
+        if (descContains == "") fail("$path.descContains", "must not be empty")
+        return Matcher(str("viewId"), str("text"), str("desc"), descContains, selected)
     }
 
     private fun unknownKey(o: JSONObject, allowed: Set<String>): String? =

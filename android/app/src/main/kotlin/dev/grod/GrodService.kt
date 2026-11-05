@@ -17,10 +17,11 @@ class GrodService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private val engine = Engine()
     private lateinit var store: RuleStore
-    private lateinit var overlays: Overlays
+    private lateinit var covers: Overlays
+    private lateinit var masks: Overlays
     private var rules: RuleSet = RuleSet.EMPTY
 
-    /** Package filter last sent to the framework; "*" means every package (see [updateFilter]). */
+    /** Package filter and timeout last sent to the framework; "*" means every package (see [updateFilter]). */
     private var appliedFilter: String? = null
     private var foregroundPkg: String? = null
 
@@ -36,14 +37,15 @@ class GrodService : AccessibilityService() {
             rules = store.rules
             cancelPendingHome()
             engine.resetSession()
-            overlays.clear()
+            clearOverlays()
             updateFilter()
         }
     }
 
     override fun onServiceConnected() {
         store = RuleStore.get(this)
-        overlays = Overlays(this)
+        covers = Overlays(this, touchable = true)
+        masks = Overlays(this, touchable = false)
         store.addListener(onStoreChanged)
         store.checkLocal()
         store.fetch()
@@ -66,7 +68,7 @@ class GrodService : AccessibilityService() {
         if (root == null) {
             // Covers swallow taps, so none may stay up while the screen cannot be read. Look once more
             // shortly, since an app in transition often has no readable window for a moment.
-            overlays.clear()
+            clearOverlays()
             updateFilter()
             if (recheckIfNoWindow) handler.postDelayed(recheck, RECHECK_MS)
             return
@@ -80,7 +82,7 @@ class GrodService : AccessibilityService() {
             }
             val targets = pkg?.let(rules::rulesFor).orEmpty()
             if (pkg == null || targets.isEmpty()) {
-                overlays.clear()
+                clearOverlays()
                 updateFilter()
                 return
             }
@@ -92,7 +94,8 @@ class GrodService : AccessibilityService() {
                 null
             }
             val outcome = engine.evaluate(targets, pkg, A11yTree(root), scroll, SystemClock.uptimeMillis())
-            overlays.show(outcome.covers)
+            covers.show(outcome.covers)
+            masks.show(outcome.masks)
             updateFilter()
             pendingHome?.let { if (it.ruleId !in outcome.onFeed) cancelPendingHome() }
             // A rule waiting for its Home follow-up escalates instead of pressing Back again.
@@ -106,7 +109,7 @@ class GrodService : AccessibilityService() {
 
     override fun onDestroy() {
         if (::store.isInitialized) store.removeListener(onStoreChanged)
-        if (::overlays.isInitialized) overlays.clear()
+        if (::covers.isInitialized) clearOverlays()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -127,6 +130,11 @@ class GrodService : AccessibilityService() {
         }
     }
 
+    private fun clearOverlays() {
+        covers.clear()
+        masks.clear()
+    }
+
     private fun cancelPendingHome() {
         pendingHome = null
         handler.removeCallbacks(homeCheck)
@@ -139,7 +147,7 @@ class GrodService : AccessibilityService() {
         val rule = rules.rulesFor(pending.pkg).firstOrNull { it.id == pending.ruleId } ?: return
         val root = rootInActiveWindow ?: return
         try {
-            if (root.packageName?.toString() == pending.pkg && engine.stillDue(rule, pending.pkg, A11yTree(root))) {
+            if (root.packageName?.toString() == pending.pkg && engine.stillDue(rule, pending.pkg, A11yTree(root), SystemClock.uptimeMillis())) {
                 performGlobalAction(GLOBAL_ACTION_HOME)
                 engine.markFired(rule.id, SystemClock.uptimeMillis())
             }
@@ -149,23 +157,27 @@ class GrodService : AccessibilityService() {
     }
 
     /**
-     * Events normally come only from target packages, which keeps the service idle elsewhere. While a
-     * cover is on screen, the filter opens to every package: otherwise the service would never see the
-     * user leave for the launcher and the cover would stay on top of it.
+     * Events normally come only from target packages, which keeps the service idle elsewhere. While an
+     * overlay is on screen, the filter opens to every package: otherwise the service would never see the
+     * user leave for the launcher and the overlay would stay on top of it.
+     * Masks sit on scrolling content, so while one is up events are batched for less time and the masks
+     * keep up with the scroll; the longer batching returns when none is shown.
      */
     private fun updateFilter() {
         val targets = rules.targetPackages
         val names: Array<String>? = when {
-            overlays.isShowing -> null
+            covers.isShowing || masks.isShowing -> null
             // An empty list means "every package" to the framework, so listen to ourselves instead.
             targets.isEmpty() -> arrayOf(packageName)
             else -> targets.sorted().toTypedArray()
         }
-        val key = names?.joinToString(",") ?: "*"
+        val timeout = if (masks.isShowing) SCROLL_TIMEOUT_MS else IDLE_TIMEOUT_MS
+        val key = (names?.joinToString(",") ?: "*") + "@" + timeout
         if (key == appliedFilter) return
         // Reading and writing serviceInfo are IPC calls, hence the cached key above.
         val info = serviceInfo ?: return
         info.packageNames = names
+        info.notificationTimeout = timeout
         serviceInfo = info
         appliedFilter = key
     }
@@ -179,5 +191,9 @@ class GrodService : AccessibilityService() {
 
     private companion object {
         const val RECHECK_MS = 300L
+        const val SCROLL_TIMEOUT_MS = 50L
+
+        /** Matches android:notificationTimeout in res/xml/grod_service.xml. */
+        const val IDLE_TIMEOUT_MS = 200L
     }
 }

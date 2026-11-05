@@ -24,6 +24,14 @@ check('youtube shorts load -> watch', page.url().includes('/watch?v=aqz-KE-bpKQ'
 const css = await page.evaluate(() => [...document.querySelectorAll('style')].map((s) => s.textContent).find((t) => t.includes('ytd-reel-shelf-renderer')) ?? '');
 check('youtube hide css injected', css.split('\n').length >= 10, `${css.split('\n').length} rules`);
 
+// 2b. Shorts shelves in search results are hidden, not just styled
+await page.goto('https://www.youtube.com/results?search_query=cat+funny', { waitUntil: 'networkidle2' }).catch(() => {});
+await sleep(2000);
+await page.evaluate(() => window.scrollBy(0, 3000));
+await sleep(2000);
+const shortsLinks = await page.evaluate(() => [...document.querySelectorAll('a[href*="/shorts/"]')].filter((a) => a.getClientRects().length).length);
+check('youtube search shows no Shorts', shortsLinks === 0, `${shortsLinks} visible`);
+
 // 3. SPA navigation to a Short is caught
 await page.goto('https://www.youtube.com/', { waitUntil: 'domcontentloaded' });
 await sleep(1500);

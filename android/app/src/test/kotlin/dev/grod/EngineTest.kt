@@ -14,12 +14,13 @@ class EngineTest {
             feed = listOf(Matcher(viewId = "clips_viewer_view_pager")),
             exempt = listOf(Matcher(viewId = "reply_bar_container")),
             cover = listOf(Matcher(viewId = "clips_tab")),
+            mask = listOf(Matcher(descContains = "Reel by ")),
             action = Action.BACK,
         ),
     )
     private val tiktokRule = Rule(
         "tiktok", "TikTok", null, true, listOf("android"),
-        AndroidRule(listOf("com.zhiliaoapp.musically"), emptyList(), emptyList(), emptyList(), Action.HOME),
+        AndroidRule(listOf("com.zhiliaoapp.musically"), emptyList(), emptyList(), emptyList(), emptyList(), Action.HOME),
     )
 
     private val feedBox = Box(0, 200, 1080, 2000)
@@ -77,7 +78,7 @@ class EngineTest {
         val engine = Engine()
         val tree = FakeTree(listOf(feed, replyBar))
         assertTrue(engine.evaluate(listOf(igRule), ig, tree, Scroll(null), 0).fire.isEmpty())
-        assertFalse(engine.stillDue(igRule, ig, tree))
+        assertFalse(engine.stillDue(igRule, ig, tree, 0))
     }
 
     @Test
@@ -123,39 +124,119 @@ class EngineTest {
         val tree = FakeTree(emptyList())
         val out = engine.evaluate(listOf(tiktokRule), "com.zhiliaoapp.musically", tree, null, 0)
         assertEquals(listOf(tiktokRule), out.fire)
-        assertTrue(engine.stillDue(tiktokRule, "com.zhiliaoapp.musically", tree))
+        assertTrue(engine.stillDue(tiktokRule, "com.zhiliaoapp.musically", tree, 0))
     }
 
     @Test
     fun homeFollowUpReevaluatesDecision() {
         val engine = Engine()
-        assertTrue(engine.stillDue(igRule, ig, FakeTree(listOf(feed))))
-        assertFalse(engine.stillDue(igRule, ig, FakeTree(listOf(tab))))
+        assertTrue(engine.stillDue(igRule, ig, FakeTree(listOf(feed)), 0))
+        assertFalse(engine.stillDue(igRule, ig, FakeTree(listOf(tab)), 0))
         // A reel opened from a DM after Back keeps its exemption.
         val dmReel = FakeTree(listOf(feed, replyBar))
-        assertFalse(engine.stillDue(igRule, ig, dmReel))
-        assertFalse(engine.stillDue(igRule.copy(enabled = false), ig, FakeTree(listOf(feed))))
+        assertFalse(engine.stillDue(igRule, ig, dmReel, 0))
+        assertFalse(engine.stillDue(igRule.copy(enabled = false), ig, FakeTree(listOf(feed)), 0))
         engine.evaluate(listOf(igRule), ig, dmReel, inFeed, 0)
-        assertTrue(engine.stillDue(igRule, ig, dmReel))
+        assertTrue(engine.stillDue(igRule, ig, dmReel, 0))
     }
 
     @Test
     fun viewIdRulesNeverWalkOrReadText() {
+        val idOnly = igRule.copy(android = igRule.android!!.copy(mask = emptyList()))
         val other = FakeNode(viewId = id("feed_tab"), textValue = "Home")
         val tree = FakeTree(listOf(tab, feed, other))
-        Engine().evaluate(listOf(igRule), ig, tree, null, 0)
-        assertEquals(0, tree.walks)
+        Engine().evaluate(listOf(idOnly), ig, tree, null, 0)
+        assertEquals(0, tree.walks + tree.textSearches)
         assertEquals(0, other.textReads + tab.textReads + feed.textReads)
     }
 
     @Test
-    fun descMatchersShareOneCappedWalk() {
+    fun descContainsMatchesSubstringIgnoringCase() {
+        val tile = FakeNode(descValue = "Reel by alice at row 1, column 2")
+        assertTrue(Matcher(descContains = "reel BY ").matches(tile, ig))
+        assertFalse(Matcher(descContains = "Reel by bob").matches(tile, ig))
+        assertFalse(Matcher(descContains = "Reel").matches(FakeNode(), ig))
+    }
+
+    private fun tile(row: Int) = FakeNode(descValue = "Reel by x at row $row, column 1", bounds = Box(0, row * 300, 360, row * 300 + 300))
+
+    @Test
+    fun masksNeverDriveTheAction() {
+        val tiles = (1..12).map(::tile)
+        val out = Engine().evaluate(listOf(igRule), ig, FakeTree(tiles + replyBar), null, 0)
+        assertEquals(tiles.map { it.bounds }, out.masks)
+        assertTrue(out.covers.isEmpty())
+        assertTrue(out.fire.isEmpty())
+        assertTrue(out.onFeed.isEmpty())
+    }
+
+    @Test
+    fun masksDoNotEndExemption() {
+        val tree = FakeTree(listOf(feed, replyBar, tile(1)))
+        val out = Engine().evaluate(listOf(igRule), ig, tree, null, 0)
+        assertEquals(1, out.masks.size)
+        assertTrue(out.fire.isEmpty())
+    }
+
+    @Test
+    fun coverWinsOverMaskOnSameNode() {
+        val both = igRule.copy(android = igRule.android!!.copy(cover = listOf(Matcher(descContains = "Reel by "))))
+        val out = Engine().evaluate(listOf(both), ig, FakeTree(listOf(tile(1), tile(2))), null, 0)
+        assertEquals(listOf(tile(1).bounds, tile(2).bounds), out.covers)
+        assertTrue(out.masks.isEmpty())
+    }
+
+    @Test
+    fun overlaysAreClippedToWindow() {
+        // Window ends at 1000 (tab bar below is drawn by the nav bar region here); tile 3 straddles it.
+        val clip = Box(0, 100, 1080, 1000)
+        val out = Engine().evaluate(listOf(igRule), ig, FakeTree(listOf(tile(0), tile(3), tile(4)), clip), null, 0)
+        assertEquals(listOf(Box(0, 100, 360, 300), Box(0, 900, 360, 1000)), out.masks)
+    }
+
+    @Test
+    fun textMatchersUseTextSearchNotWalk() {
         val shorts = FakeNode(descValue = "Shorts", bounds = Box(300, 2100, 500, 2200))
-        val tree = FakeTree(listOf(FakeNode(descValue = "Home"), shorts))
-        val hits = scan(tree, "p", listOf(Matcher(desc = "Shorts"), Matcher(desc = "shorts", selected = false)))
-        assertEquals(1, tree.walks)
-        assertEquals(WALK_LIMIT, tree.walkLimit)
+        val tree = FakeTree(listOf(FakeNode(descValue = "Home"), FakeNode(descValue = "Shorts shelf"), shorts))
+        val hits = Scanner().scan(tree, "p", listOf(Matcher(desc = "Shorts"), Matcher(descContains = "shorts")), 0)
+        assertEquals(0, tree.walks)
+        assertEquals(1, tree.textSearches)
         assertEquals(listOf(shorts.bounds), hits[Matcher(desc = "Shorts")])
-        assertEquals(listOf(shorts.bounds), hits[Matcher(desc = "shorts", selected = false)])
+        assertEquals(2, hits[Matcher(descContains = "shorts")]!!.size)
+    }
+
+    @Test
+    fun fallsBackToWalkWhenTextSearchMisses() {
+        val shorts = FakeNode(descValue = "Shorts", bounds = Box(300, 2100, 500, 2200))
+        val tree = FakeTree(listOf(FakeNode(descValue = "Home"), shorts), textSearchWorks = false)
+        val scanner = Scanner()
+        val cover = Matcher(desc = "Shorts")
+        assertEquals(listOf(shorts.bounds), scanner.scan(tree, "p", listOf(cover), 0)[cover])
+        // Learned: walked from then on, even inside the probe interval.
+        assertEquals(listOf(shorts.bounds), scanner.scan(tree, "p", listOf(cover), 100)[cover])
+        assertEquals(2, tree.walks)
+        assertEquals(WALK_LIMIT, tree.walkLimit)
+    }
+
+    @Test
+    fun absentTextMatcherProbesAtMostOncePerInterval() {
+        val tree = FakeTree(listOf(FakeNode(descValue = "Home")))
+        val scanner = Scanner()
+        val m = Matcher(text = "Watch more reels")
+        scanner.scan(tree, "p", listOf(m), 0)
+        scanner.scan(tree, "p", listOf(m), 1_000)
+        assertEquals(1, tree.walks)
+        scanner.scan(tree, "p", listOf(m), Scanner.PROBE_INTERVAL_MS)
+        assertEquals(2, tree.walks)
+        assertEquals(3, tree.textSearches)
+    }
+
+    @Test
+    fun selectedOnlyMatcherWalks() {
+        val tree = FakeTree(listOf(FakeNode(isSelected = true)))
+        val m = Matcher(selected = true)
+        assertEquals(1, Scanner().scan(tree, "p", listOf(m), 0)[m]!!.size)
+        assertEquals(1, tree.walks)
+        assertEquals(0, tree.textSearches)
     }
 }

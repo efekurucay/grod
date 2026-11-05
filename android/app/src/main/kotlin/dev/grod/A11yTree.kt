@@ -3,6 +3,7 @@ package dev.grod
 import android.graphics.Rect
 import android.os.Build
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 
 /**
  * [WindowTree] over a live accessibility window. Every node it obtains is recycled before the call
@@ -11,8 +12,28 @@ import android.view.accessibility.AccessibilityNodeInfo
 class A11yTree(private val root: AccessibilityNodeInfo) : WindowTree {
     private val rect = Rect()
 
-    override fun findByViewId(fullId: String, visit: (Node) -> Unit) {
-        for (info in root.findAccessibilityNodeInfosByViewId(fullId)) {
+    /**
+     * The window's bounds as accessibility reports them, which leave out the parts covered by the
+     * status and navigation bars. Needs flagRetrieveInteractiveWindows; without it the window is null.
+     */
+    override val clip: Box? by lazy {
+        val window = root.window ?: return@lazy null
+        try {
+            window.getBoundsInScreen(rect)
+            Box(rect.left, rect.top, rect.right, rect.bottom).takeUnless { it.isEmpty }
+        } finally {
+            recycle(window)
+        }
+    }
+
+    override fun findByViewId(fullId: String, visit: (Node) -> Unit) =
+        visitAll(root.findAccessibilityNodeInfosByViewId(fullId), visit)
+
+    override fun findByText(value: String, visit: (Node) -> Unit) =
+        visitAll(root.findAccessibilityNodeInfosByText(value), visit)
+
+    private fun visitAll(found: List<AccessibilityNodeInfo>, visit: (Node) -> Unit) {
+        for (info in found) {
             try {
                 visibleBounds(info)?.let { visit(A11yNode(info, it)) }
             } finally {
@@ -64,6 +85,13 @@ class A11yTree(private val root: AccessibilityNodeInfo) : WindowTree {
             if (Build.VERSION.SDK_INT < 33) {
                 @Suppress("DEPRECATION")
                 info.recycle()
+            }
+        }
+
+        private fun recycle(window: AccessibilityWindowInfo) {
+            if (Build.VERSION.SDK_INT < 33) {
+                @Suppress("DEPRECATION")
+                window.recycle()
             }
         }
     }

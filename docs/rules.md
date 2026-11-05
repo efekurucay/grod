@@ -25,23 +25,44 @@ Rules with an `android` section apply only inside their `packages`.
 A **matcher** matches a node when every field present matches:
 - `viewId`: node's `viewIdResourceName` equals `<package>:id/<viewId>`.
 - `text` / `desc`: node text / content description equals the value, case-insensitive.
+- `descContains`: content description contains the value, case-insensitive.
 - `selected`: node `isSelected` equals the value.
 
 Only nodes that are visible to the user with non-empty screen bounds count.
 
 On each relevant accessibility event in a target package:
 1. **cover**: every node matched by a `cover` matcher gets an opaque overlay at its screen bounds that swallows taps. Overlays move with the node and disappear when it does or the app leaves the front.
-2. **feed**: the user is in the feed if any `feed` matcher matches a node. A missing or empty `feed` means the whole app is the feed.
-3. **exempt**: if any `exempt` matcher matches, the feed action is held, until a scroll event comes from inside the feed. One reel sent in a DM plays; swiping to the next one does not.
-4. **action**: `back` presses Back; if the feed is still on screen 1.5 s later, it goes Home. `home` goes Home. After an action the rule does nothing for 1.5 s, so one feed entry triggers one action.
+2. **mask**: every node matched by a `mask` matcher gets the same opaque overlay, but touches pass through it. Use it for large areas (feed thumbnails), so the page still scrolls; a tap that opens the feed is then caught by `feed`. Overlays follow scrolling.
+3. **feed**: the user is in the feed if any `feed` matcher matches a node. A missing or empty `feed` means the whole app is the feed.
+4. **exempt**: if any `exempt` matcher matches, the feed action is held, until a scroll event comes from inside the feed. One reel sent in a DM plays; swiping to the next one does not.
+5. **action**: `back` presses Back; if the feed is still on screen 1.5 s later, it goes Home. `home` goes Home. After an action the rule does nothing for 1.5 s, so one feed entry triggers one action.
 
 Each fired action increments a per-rule counter kept on the device.
+
+## YouTube channels
+
+A rule's `youtubeChannels` list hides channels everywhere on YouTube, on the web and in the Android app. Each entry has `name` (display name exactly as shown), `handle` (`@handle`) and optionally `id` (`UC…`). Channel lists from every enabled rule are merged.
+
+Web (hosts `youtube.com` and subdomains):
+- Every video, Short or channel tile that contains a link to `/@handle` or `/channel/<id>` is hidden. Handles compare case-insensitively after percent-decoding, so `/@%C3%87in…` matches `@Çin…`.
+- Routes `/@handle` and `/channel/<id>` (and anything below them) show the blocked page.
+- A watch page whose owner link points to a blocked channel shows the blocked page. The owner appears after the page renders, so it is checked for a few seconds after each navigation.
+
+Android (`com.google.android.youtube`, `app.revanced.android.youtube`), YouTube in English:
+- Nodes whose description contains `Go to channel <name> -` (video tiles) or whose text equals `<name>` (channel cards) get a mask.
+- A watch page (`watch_player` on screen) with a node described `Subscribe to <name>.` or `Unsubscribe from <name>.` gets the `back` action.
+
+Adding a channel:
+- Desktop: the "Block channel" item grod adds to a video's ⋮ menu, or right-click a video or channel link → "grod: Block channel". The extension applies it at once and sends it to the macOS app (`POST /youtube-channels`), which writes it with `grod channel add`.
+- Android: YouTube → Share → grod. The app resolves the channel (YouTube oEmbed for a video link, the channel page for a channel link), applies it at once and lists it in `channels-added.json` in its external files dir; `grod sync` merges that file into the rules.
+- Agent or terminal: `grod channel add <video or channel URL | @handle>`.
 
 ## macOS
 
 - `macos.quitApps`: bundle ids of enabled rules are quit when they launch or come to the front.
 - Safari guard: while Safari is in front, the app reads the front tab URL every 1.5 s and applies the Web rules above. The blocked page is served at `http://127.0.0.1:47770/blocked?rule=<id>`. Chromium browsers and Firefox are left to the extension, so two enforcers never fight.
 - `GET http://127.0.0.1:47770/rules.json` serves the current valid rules with `revision`. The extension polls it.
+- `POST http://127.0.0.1:47770/youtube-channels` with JSON `{"name", "handle", "id"?}` and header `X-Grod: 1` runs `grod channel add`. The custom header forces a CORS preflight that the app never answers, so web pages cannot call it; the extension can, through its host permission.
 
 ## Writing a good rule
 

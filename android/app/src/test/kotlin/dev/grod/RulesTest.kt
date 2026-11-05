@@ -21,10 +21,16 @@ class RulesTest {
         assertEquals(listOf("com.google.android.youtube", "app.revanced.android.youtube"), android.packages)
         assertEquals(listOf(Matcher(viewId = "reel_player_page_container"), Matcher(viewId = "reel_watch_player")), android.feed)
         assertEquals(listOf(Matcher(desc = "Shorts")), android.cover)
+        assertEquals(listOf(Matcher(descContains = "play Short")), android.mask)
         assertEquals(Action.BACK, android.action)
+
+        val igAndroid = set.rules.single { it.id == "instagram-reels" }.android!!
+        assertTrue(Matcher(text = "Watch more reels") in igAndroid.cover)
+        assertEquals(listOf(Matcher(descContains = "Reel by ")), igAndroid.mask)
 
         val tiktok = set.rules.single { it.id == "tiktok" }.android!!
         assertTrue(tiktok.feed.isEmpty())
+        assertTrue(tiktok.mask.isEmpty())
         assertEquals(Action.HOME, tiktok.action)
 
         assertNull(set.rules.single { it.id == "facebook-reels" }.android)
@@ -73,6 +79,9 @@ class RulesTest {
             "empty matcher" to withAndroid("""{"packages":["p"],"feed":[{}]}"""),
             "unknown matcher field" to withAndroid("""{"packages":["p"],"cover":[{"id":"x"}]}"""),
             "matcher wrong type" to withAndroid("""{"packages":["p"],"exempt":[{"selected":"true"}]}"""),
+            "empty descContains" to withAndroid("""{"packages":["p"],"mask":[{"descContains":""}]}"""),
+            "descContains not string" to withAndroid("""{"packages":["p"],"mask":[{"descContains":1}]}"""),
+            "mask not array" to withAndroid("""{"packages":["p"],"mask":{"descContains":"x"}}"""),
             "matchers not array" to withAndroid("""{"packages":["p"],"feed":{"viewId":"x"}}"""),
         )
         for ((name, json) in bad) {

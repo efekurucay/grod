@@ -48,6 +48,13 @@
         "enabled": {
           "type": "boolean"
         },
+        "youtubeChannels": {
+          "description": "YouTube channels whose videos disappear everywhere: feeds, search, recommendations; their watch and channel pages are blocked. Applied on the web and in the YouTube Android app.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/youtubeChannel"
+          }
+        },
         "web": {
           "$ref": "#/$defs/web"
         },
@@ -113,7 +120,7 @@
       }
     },
     "matcher": {
-      "description": "Every field present must match one accessibility node. viewId is the id without the package prefix. text and desc are exact, case-insensitive.",
+      "description": "Every field present must match one accessibility node. viewId is the id without the package prefix. text and desc are exact, descContains is a substring; all case-insensitive.",
       "type": "object",
       "additionalProperties": false,
       "minProperties": 1,
@@ -126,6 +133,10 @@
         },
         "desc": {
           "type": "string"
+        },
+        "descContains": {
+          "type": "string",
+          "minLength": 1
         },
         "selected": {
           "type": "boolean"
@@ -167,6 +178,13 @@
             "$ref": "#/$defs/matcher"
           }
         },
+        "mask": {
+          "description": "Nodes hidden under an opaque overlay that lets touches through, for large areas such as feed thumbnails: the page still scrolls and a tap still reaches the app.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/matcher"
+          }
+        },
         "action": {
           "description": "back: press Back, then Home if still in the feed. home: go straight to the launcher; use when the whole app is the feed.",
           "enum": [
@@ -187,6 +205,31 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "youtubeChannel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "handle"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display name exactly as YouTube shows it; the Android app matches on it."
+        },
+        "handle": {
+          "type": "string",
+          "pattern": "^@[^\\s/?#]+$",
+          "description": "Channel handle with @, as in youtube.com/@handle; the web matches on it."
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^UC[A-Za-z0-9_-]{22}$",
+          "description": "Channel id, for pages that link /channel/<id> instead of the handle."
         }
       }
     }

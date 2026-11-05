@@ -5,23 +5,35 @@ class Scroll(val source: Box?)
 
 /**
  * What one event asks the service to do: overlays to show and rules whose action fires now.
- * [onFeed] holds the ids of rules whose feed is on screen, including rules in cooldown.
+ * [covers] swallow taps, [masks] let them through. [onFeed] holds the ids of rules whose feed is on
+ * screen, including rules in cooldown.
  */
-data class Outcome(val covers: List<Box>, val fire: List<Rule>, val onFeed: Set<String>)
+data class Outcome(val covers: List<Box>, val masks: List<Box>, val fire: List<Rule>, val onFeed: Set<String>)
 
 /**
- * Feed/exempt/cover/action semantics of docs/rules.md, free of Android types so it is unit tested.
+ * Cover/mask/feed/exempt/action semantics of docs/rules.md, free of Android types so it is unit tested.
  * Not thread-safe; the service calls it from the main thread only.
  */
-class Engine(private val cooldownMs: Long = COOLDOWN_MS) {
+class Engine(
+    private val cooldownMs: Long = COOLDOWN_MS,
+    private val scanner: Scanner = Scanner(),
+) {
     private val cooldownUntil = HashMap<String, Long>()
 
     /** Rules whose feed got a scroll while exempt; the exemption ends until the feed leaves the screen. */
     private val scrolledInFeed = HashSet<String>()
 
     fun evaluate(rules: List<Rule>, pkg: String, tree: WindowTree, scroll: Scroll?, now: Long): Outcome {
-        val hits = scan(tree, pkg, rules.flatMap { it.android!!.feed + it.android.cover })
-        val covers = rules.flatMap { r -> r.android!!.cover.flatMap { hits[it].orEmpty() } }.distinct()
+        val wanted = rules.flatMap { it.android!!.feed + it.android.cover + it.android.mask }
+        val hits = scanner.scan(tree, pkg, wanted, now)
+        val clip = tree.clip
+        fun boxes(select: (AndroidRule) -> List<Matcher>) = rules
+            .flatMap { r -> select(r.android!!).flatMap { hits[it].orEmpty() } }
+            .mapNotNull { if (clip == null) it else it.intersect(clip) }
+            .distinct()
+        val covers = boxes { it.cover }
+        // A node under a cover needs no mask; the cover must stay the window that takes the tap.
+        val masks = boxes { it.mask }.filter { m -> covers.none { it.contains(m) } }
 
         val onFeed = HashSet<String>()
         val due = rules.filter { rule ->
@@ -39,24 +51,24 @@ class Engine(private val cooldownMs: Long = COOLDOWN_MS) {
         // Exempt markers are only looked up for rules that would fire, which keeps idle events cheap.
         val needExempt = due.filter { it.android!!.exempt.isNotEmpty() && it.id !in scrolledInFeed }
         val exemptHits = if (needExempt.isEmpty()) emptyMap()
-        else scan(tree, pkg, needExempt.flatMap { it.android!!.exempt })
+        else scanner.scan(tree, pkg, needExempt.flatMap { it.android!!.exempt }, now)
         val fire = due.filter { rule ->
             rule !in needExempt || rule.android!!.exempt.none { exemptHits[it].orEmpty().isNotEmpty() }
         }
         for (rule in fire) markFired(rule.id, now)
-        return Outcome(covers, fire, onFeed)
+        return Outcome(covers, masks, fire, onFeed)
     }
 
     /**
      * Whether [rule]'s action would still apply on this screen, ignoring cooldown. Decides the Home that
      * follows a Back, so a reel opened from a DM in the meantime keeps its exemption.
      */
-    fun stillDue(rule: Rule, pkg: String, tree: WindowTree): Boolean {
+    fun stillDue(rule: Rule, pkg: String, tree: WindowTree, now: Long): Boolean {
         val android = rule.android ?: return false
         if (!rule.enabled) return false
-        if (android.feed.isNotEmpty() && scan(tree, pkg, android.feed).isEmpty()) return false
+        if (android.feed.isNotEmpty() && scanner.scan(tree, pkg, android.feed, now).isEmpty()) return false
         if (android.exempt.isEmpty() || rule.id in scrolledInFeed) return true
-        return scan(tree, pkg, android.exempt).isEmpty()
+        return scanner.scan(tree, pkg, android.exempt, now).isEmpty()
     }
 
     /** Forgets feed scrolls, e.g. when another app or window comes to the front. */

@@ -51,7 +51,12 @@
             "desc": "Shorts"
           }
         ],
-        "action": "back"
+        "action": "back",
+        "mask": [
+          {
+            "descContains": "play Short"
+          }
+        ]
       }
     },
     {
@@ -91,9 +96,20 @@
         "cover": [
           {
             "viewId": "clips_tab"
+          },
+          {
+            "text": "Watch more reels"
           }
         ],
-        "action": "back"
+        "action": "back",
+        "mask": [
+          {
+            "descContains": "Reel by "
+          },
+          {
+            "viewId": "layout_container"
+          }
+        ]
       }
     },
     {

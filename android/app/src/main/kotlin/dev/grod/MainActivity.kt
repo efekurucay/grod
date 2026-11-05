@@ -86,7 +86,8 @@ class MainActivity : Activity() {
         ruleList.removeAllViews()
         for (rule in store.rules.rules) {
             val state = if (rule.enabled) "enabled" else "disabled"
-            val line = "${rule.title}\n$state · ${rule.platforms.size} platforms · fired ${store.fireCount(rule.id)}×"
+            val overlays = rule.android?.let { " · covers ${it.cover.size} · masks ${it.mask.size}" }.orEmpty()
+            val line = "${rule.title}\n$state · ${rule.platforms.size} platforms$overlays · fired ${store.fireCount(rule.id)}×"
             ruleList.addView(text(line, 15f).apply { setPadding(0, dp(8), 0, 0) })
         }
     }
