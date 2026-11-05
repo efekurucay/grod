@@ -10,7 +10,14 @@ import android.provider.Settings
 
 /** The special accesses notification batching and the export need; granted by install.sh or by hand. */
 object Permissions {
-    fun notificationAccess(context: Context): Boolean {
+    fun accessibilityService(context: Context): Boolean {
+        val me = ComponentName(context, GrodService::class.java)
+        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            ?: return false
+        return enabled.split(':').any { ComponentName.unflattenFromString(it) == me }
+    }
+
+        fun notificationAccess(context: Context): Boolean {
         val me = ComponentName(context, NotificationService::class.java)
         val enabled = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners") ?: return false
         return enabled.split(':').any { ComponentName.unflattenFromString(it) == me }

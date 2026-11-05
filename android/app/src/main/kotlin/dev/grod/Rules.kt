@@ -56,6 +56,7 @@ data class RuleSet(
     val rules: List<Rule>,
     val localChannels: List<Channel> = emptyList(),
     val notifications: NotificationSettings? = null,
+    val review: ReviewSettings? = null,
 ) {
     val channels: List<ChannelEntry> = mergeChannels(rules, localChannels)
 
@@ -112,7 +113,8 @@ object Rules {
             rule
         }
         val notifications = root.opt("notifications")?.let { parseNotifications(it, "notifications") }
-        return RuleSet(revision, rules, notifications = notifications)
+        val review = root.opt("review")?.let { parseReview(it, "review") }
+        return RuleSet(revision, rules, notifications = notifications, review = review)
     }
 
     private fun parseNotifications(raw: Any, path: String): NotificationSettings {
@@ -139,11 +141,22 @@ object Rules {
             (0 until arr.length()).map { i ->
                 val t = arr.opt(i) as? String
                 if (t == null || !CLOCK.matches(t)) fail("$path.deliverAt[$i]", "must look like HH:MM")
-                t.substring(0, 2).toInt() * 60 + t.substring(3).toInt()
+                clockMinutes(t)
             }.distinct().sorted()
         }
         return NotificationSettings(enabled, every, entries, keepDays, deliverAt)
     }
+
+    private fun parseReview(raw: Any, path: String): ReviewSettings {
+        val o = raw as? JSONObject ?: fail(path, "must be an object")
+        unknownKey(o, setOf("weekday", "time"))?.let { fail("$path.$it", "unknown field") }
+        val weekday = int(o.opt("weekday"), "$path.weekday", 1..7)
+        val time = o.opt("time") as? String
+        if (time == null || !CLOCK.matches(time)) fail("$path.time", "must look like HH:MM")
+        return ReviewSettings(weekday, clockMinutes(time))
+    }
+
+    private fun clockMinutes(t: String) = t.substring(0, 2).toInt() * 60 + t.substring(3).toInt()
 
     private fun int(raw: Any?, path: String, range: IntRange): Int {
         val n = raw as? Number ?: fail(path, "must be an integer")

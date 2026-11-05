@@ -3,6 +3,14 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+/** A Gradle property (-P or gradle.properties) or, for CI secrets, the environment variable of the same name. */
+fun setting(name: String): String? = (findProperty(name) as String?) ?: System.getenv(name)
+
+// CI passes the git tag; local builds keep the defaults.
+val grodVersionName = setting("grodVersionName") ?: "0.1.0"
+val grodVersionCode = setting("grodVersionCode")?.toInt() ?: 1
+val releaseKeystore = setting("GROD_KEYSTORE_FILE")
+
 android {
     namespace = "dev.grod"
     compileSdk = 35
@@ -11,8 +19,19 @@ android {
         applicationId = "dev.grod"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = grodVersionCode
+        versionName = grodVersionName
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = setting("GROD_KEYSTORE_PASSWORD")
+                keyAlias = setting("GROD_KEY_ALIAS")
+                keyPassword = setting("GROD_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -20,6 +39,21 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            // Without the keystore settings the release stays unsigned, so local and fork builds still pass.
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
+
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            val suffix = when {
+                variant.buildType.name == "debug" -> "-debug"
+                variant.signingConfig == null -> "-unsigned"
+                else -> ""
+            }
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                "grod-${variant.versionName}$suffix.apk"
         }
     }
 

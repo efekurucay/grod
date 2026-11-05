@@ -16,14 +16,18 @@ export type NotificationEvent = {
 export type RuleEvent = { t: number; rule: string; pkg: string; action: string };
 export type Usage = { generated: number; days: Record<string, Record<string, number>> };
 
-/** docs/data.md: the logs sit in the app's private storage; a debuggable build lets adb read them with run-as. */
-function runAs(serial: string | undefined, command: string, binary = false): Buffer {
-  const target = serial ? ['-s', serial] : [];
-  return execFileSync('adb', [...target, 'exec-out', 'run-as', ANDROID_PACKAGE, 'sh', '-c', command], {
+const EXPORT_DIR = `/sdcard/Android/data/${ANDROID_PACKAGE}/files/export`;
+
+function adb(serial: string | undefined, args: string[], binary = false): Buffer {
+  return execFileSync('adb', [...(serial ? ['-s', serial] : []), ...args], {
     stdio: ['ignore', 'pipe', 'ignore'],
     maxBuffer: 256 * 1024 * 1024,
     encoding: binary ? 'buffer' : undefined,
   }) as Buffer;
+}
+
+function broadcast(serial: string | undefined, action: string): void {
+  adb(serial, ['shell', 'am', 'broadcast', '-a', action, '-n', `${ANDROID_PACKAGE}/.ExportReceiver`]);
 }
 
 function lines<T>(raw: Buffer, name: string): T[] {
@@ -40,36 +44,57 @@ function lines<T>(raw: Buffer, name: string): T[] {
     });
 }
 
-export function readLogs(days: number, serial?: string) {
+/**
+ * docs/data.md "Export": release builds are not debuggable, so the app copies its private logs to its
+ * external dir on request; they are read and the copy is deleted at once so it does not linger in shared storage.
+ */
+export function readPhone(days: number, serial?: string) {
   const since = Date.now() - days * 86_400_000;
   const cutoff = new Date(since).toISOString().slice(0, 10);
-  let names: string[];
   try {
-    names = runAs(serial, 'ls files/log').toString('utf8').split(/\s+/).filter(Boolean);
+    broadcast(serial, 'dev.grod.EXPORT');
   } catch {
-    throw new Error('Cannot read grod logs: connect the phone over adb (USB or android/wifi.sh) with the grod app installed.');
+    throw new Error('Cannot reach grod on the phone: connect it over adb (USB or wifi.sh) with the grod app installed.');
   }
-  const notifications: NotificationEvent[] = [];
-  const events: RuleEvent[] = [];
-  for (const name of names) {
-    const day = name.match(/(\d{4}-\d{2}-\d{2})/)?.[1];
-    if (!day || day < cutoff) continue;
-    const raw = runAs(serial, `cat files/log/${name}`, true);
-    if (name.startsWith('notifications-')) notifications.push(...lines<NotificationEvent>(raw, name));
-    if (name.startsWith('events-')) events.push(...lines<RuleEvent>(raw, name));
-  }
-  return { notifications: notifications.filter((n) => n.t >= since), events: events.filter((e) => e.t >= since) };
-}
-
-export function readUsage(serial?: string): Usage | null {
-  const target = serial ? ['-s', serial] : [];
   try {
-    execFileSync('adb', [...target, 'shell', 'am', 'broadcast', '-a', 'dev.grod.EXPORT', '-n', `${ANDROID_PACKAGE}/.ExportReceiver`], { stdio: 'ignore' });
-    // The receiver writes asynchronously; usage queries take well under a second.
-    execFileSync('sleep', ['1.5']);
-    return JSON.parse(runAs(serial, 'cat files/export/usage.json').toString('utf8')) as Usage;
-  } catch {
-    return null;
+    // The export runs on the app's worker thread; wait until usage.json, written last, appears.
+    let names: string[] = [];
+    for (let i = 0; i < 20; i++) {
+      execFileSync('sleep', ['0.25']);
+      try {
+        names = adb(serial, ['shell', 'ls', `${EXPORT_DIR}/log`]).toString('utf8').split(/\s+/).filter(Boolean);
+        adb(serial, ['shell', 'test', '-f', `${EXPORT_DIR}/usage.json`]);
+        break;
+      } catch {
+        names = [];
+      }
+    }
+    const notifications: NotificationEvent[] = [];
+    const events: RuleEvent[] = [];
+    for (const name of names) {
+      const day = name.match(/(\d{4}-\d{2}-\d{2})/)?.[1];
+      if (!day || day < cutoff) continue;
+      const raw = adb(serial, ['exec-out', 'cat', `${EXPORT_DIR}/log/${name}`], true);
+      if (name.startsWith('notifications-')) notifications.push(...lines<NotificationEvent>(raw, name));
+      if (name.startsWith('events-')) events.push(...lines<RuleEvent>(raw, name));
+    }
+    let usage: Usage | null = null;
+    try {
+      const parsed = JSON.parse(adb(serial, ['exec-out', 'cat', `${EXPORT_DIR}/usage.json`]).toString('utf8'));
+      usage = parsed.days ? (parsed as Usage) : null;
+    } catch {
+      usage = null;
+    }
+    return {
+      logs: { notifications: notifications.filter((n) => n.t >= since), events: events.filter((e) => e.t >= since) },
+      usage,
+    };
+  } finally {
+    try {
+      broadcast(serial, 'dev.grod.EXPORT_CLEAR');
+    } catch {
+      // The phone went away mid-read; the app's next export overwrites the copy anyway.
+    }
   }
 }
 
@@ -77,7 +102,9 @@ const top = (counts: Map<string, number>, n = 10) =>
   [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
 
 /** The numbers an agent needs to see what pulls the user in, without dumping message text. */
-export function summarize(days: number, logs: ReturnType<typeof readLogs>, usage: Usage | null) {
+export type Logs = { notifications: NotificationEvent[]; events: RuleEvent[] };
+
+export function summarize(days: number, logs: Logs, usage: Usage | null) {
   const posted = logs.notifications.filter((n) => n.e === 'posted');
   const byApp = new Map<string, number>();
   const heldByApp = new Map<string, number>();
@@ -118,12 +145,17 @@ export function summarize(days: number, logs: ReturnType<typeof readLogs>, usage
   };
 }
 
+export function phoneSummary(days: number, serial?: string) {
+  const { logs, usage } = readPhone(days, serial);
+  return summarize(days, logs, usage);
+}
+
 /** Turkish-aware and dotless-i-blind, so "GELİYOR", "geliyor" and "Instagram" all match the way people type. */
 const fold = (s: string) => s.toLocaleLowerCase('tr').replace(/ı/g, 'i');
 
 /** History search, e.g. a WhatsApp message the sender deleted. */
 export function searchNotifications(
-  logs: ReturnType<typeof readLogs>,
+  logs: Logs,
   { query, app, withdrawnOnly, limit = 50 }: { query?: string; app?: string; withdrawnOnly?: boolean; limit?: number },
 ) {
   const q = query ? fold(query) : undefined;

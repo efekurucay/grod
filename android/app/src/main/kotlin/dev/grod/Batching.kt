@@ -1,6 +1,7 @@
 package dev.grod
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -89,17 +90,22 @@ object Batching {
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
         // In a repeated hour slot order is not time order (02:00 the second time comes after 02:15 the
         // first time), so every candidate from yesterday to tomorrow is compared.
-        return (-1L..1L).flatMap { day ->
-            val date = today.plusDays(day)
-            slots.flatMap { slot ->
-                val wall = LocalDateTime.of(date, LocalTime.of(slot / 60, slot % 60))
-                val transition = zone.rules.getTransition(wall)
-                when {
-                    transition == null -> listOf(wall.atZone(zone).toInstant())
-                    transition.isGap -> listOf(transition.instant)
-                    else -> listOf(wall.atOffset(transition.offsetBefore).toInstant(), wall.atOffset(transition.offsetAfter).toInstant())
-                }
-            }
-        }.map { it.toEpochMilli() }.filter { it > now }.min()
+        return (-1L..1L).flatMap { day -> slots.flatMap { wallInstants(today.plusDays(day), it, zone) } }
+            .filter { it > now }.min()
     }
+}
+
+/**
+ * The instants a local wall time ([minute] after midnight on [date]) names: one normally, the jump
+ * moment when DST skips it, and both passes when DST repeats it.
+ */
+fun wallInstants(date: LocalDate, minute: Int, zone: ZoneId): List<Long> {
+    val wall = LocalDateTime.of(date, LocalTime.of(minute / 60, minute % 60))
+    val transition = zone.rules.getTransition(wall)
+    val instants = when {
+        transition == null -> listOf(wall.atZone(zone).toInstant())
+        transition.isGap -> listOf(transition.instant)
+        else -> listOf(wall.atOffset(transition.offsetBefore).toInstant(), wall.atOffset(transition.offsetAfter).toInstant())
+    }
+    return instants.map { it.toEpochMilli() }
 }

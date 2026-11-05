@@ -190,6 +190,7 @@ class RuleStore private constructor(private val app: Context) {
 
     private fun publishRules() {
         rules = parsed.copy(localChannels = localChannels)
+        ReviewSchedule.apply(app, rules.review)
         notifyListeners()
     }
 

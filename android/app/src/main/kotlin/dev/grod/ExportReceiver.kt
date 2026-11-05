@@ -11,25 +11,33 @@ import java.time.ZoneId
 import kotlin.concurrent.thread
 
 /**
- * `adb shell am broadcast -a dev.grod.EXPORT -n dev.grod/.ExportReceiver` writes files/export/usage.json
- * (docs/data.md). Guarded by the DUMP permission in the manifest, so only adb and the system can call it.
+ * docs/data.md, "Export": `dev.grod.EXPORT` writes usage.json and a copy of the logs into the
+ * external export dir, where `adb pull` reaches them without run-as (release builds are not
+ * debuggable); `dev.grod.EXPORT_CLEAR` deletes that dir. The private logs stay where they are.
+ * Guarded by the DUMP permission in the manifest, so only adb and the system can call it.
  */
 class ExportReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ACTION) return
         val app = context.applicationContext
+        val dir = app.getExternalFilesDir("export") ?: return
         val keepDays = RuleStore.get(app).rules.keepDays
         val pending = goAsync()
         thread(name = "grod-export") {
             try {
-                export(app, keepDays)
+                when (intent.action) {
+                    ACTION_EXPORT -> {
+                        writeUsage(app, keepDays, dir)
+                        LogWriter.get(app).copyTo(File(dir, "log"))
+                    }
+                    ACTION_CLEAR -> dir.deleteRecursively()
+                }
             } finally {
                 pending.finish()
             }
         }
     }
 
-    private fun export(context: Context, keepDays: Int) {
+    private fun writeUsage(context: Context, keepDays: Int, dir: File) {
         val zone = ZoneId.systemDefault()
         val now = System.currentTimeMillis()
         val from = LocalDate.now(zone).minusDays(maxOf(keepDays, 1) - 1L).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -48,13 +56,14 @@ class ExportReceiver : BroadcastReceiver() {
             }
             Usage.toJson(now, Usage.foregroundByDay(events, now, zone))
         }
-        val dir = File(context.filesDir, "export").apply { mkdirs() }
+        dir.mkdirs()
         val tmp = File(dir, "usage.json.tmp")
         tmp.writeText(json)
         tmp.renameTo(File(dir, "usage.json"))
     }
 
     private companion object {
-        const val ACTION = "dev.grod.EXPORT"
+        const val ACTION_EXPORT = "dev.grod.EXPORT"
+        const val ACTION_CLEAR = "dev.grod.EXPORT_CLEAR"
     }
 }

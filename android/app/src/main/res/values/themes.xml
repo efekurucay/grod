@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Light here, dark in values-night: the framework has no DayNight Material theme before API 29. -->
+    <style name="Base.Theme.Grod" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Grod" parent="Base.Theme.Grod">
+        <item name="android:colorBackground">@color/grod_background</item>
+        <item name="android:windowBackground">@color/grod_background</item>
+        <item name="android:colorPrimary">@color/grod_background</item>
+        <item name="android:colorPrimaryDark">@color/grod_background</item>
+        <!-- Focus and cursor use the ring color; the sage accent is kept for the one "on" state. -->
+        <item name="android:colorAccent">@color/grod_ring</item>
+        <item name="android:colorControlActivated">@color/grod_ring</item>
+        <item name="android:textColorPrimary">@color/grod_foreground</item>
+        <item name="android:textColorSecondary">@color/grod_muted_foreground</item>
+        <item name="android:textColorHint">@color/grod_muted_foreground</item>
+        <item name="android:statusBarColor">@color/grod_background</item>
+        <item name="android:navigationBarColor">@color/grod_background</item>
+        <item name="android:windowLightStatusBar">@bool/grod_light_bars</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/grod_light_bars</item>
+    </style>
+</resources>

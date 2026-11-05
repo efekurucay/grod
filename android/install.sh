@@ -8,7 +8,6 @@ cd "$(dirname "$0")"
 PKG=dev.grod
 SERVICE="$PKG/$PKG.GrodService"
 SERVICE_SHORT="$PKG/.GrodService"
-APK=app/build/outputs/apk/debug/app-debug.apk
 PUSH_PATH=/sdcard/Android/data/$PKG/files/rules.json
 
 say() { printf '==> %s\n' "$*"; }
@@ -22,11 +21,26 @@ if [ "$(adb get-state 2>/dev/null || true)" != "device" ]; then
   exit 1
 fi
 
-say "Building debug APK"
-./gradlew -q assembleDebug
+# A phone runs one signature: once a signed release is on it, updates must be signed the same way.
+# Signing settings (GROD_KEYSTORE_FILE, …) come from the environment or ~/.config/grod/release.env.
+if [ -z "${GROD_KEYSTORE_FILE:-}" ] && [ -f "$HOME/.config/grod/release.env" ]; then
+  set -a; . "$HOME/.config/grod/release.env"; set +a
+fi
+if [ -n "${GROD_KEYSTORE_FILE:-}" ]; then
+  say "Building signed release APK"
+  ./gradlew -q assembleRelease
+  APK="$(ls -t app/build/outputs/apk/release/grod-*.apk | grep -v unsigned | head -1)"
+else
+  say "Building debug APK"
+  ./gradlew -q assembleDebug
+  APK="$(ls -t app/build/outputs/apk/debug/grod-*-debug.apk | head -1)"
+fi
 
 say "Installing $APK"
-adb install -r "$APK" >/dev/null
+if ! adb install -r "$APK" >/dev/null 2>&1; then
+  echo "    The phone has grod signed with a different key. Uninstall it first (adb uninstall $PKG), then run this again." >&2
+  exit 1
+fi
 echo "    installed"
 
 say "Allowing restricted settings (needed on Android 13+ for sideloaded apps)"

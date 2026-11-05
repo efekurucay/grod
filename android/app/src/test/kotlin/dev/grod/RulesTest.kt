@@ -34,6 +34,7 @@ class RulesTest {
         assertEquals(Action.HOME, tiktok.action)
 
         assertNull(set.rules.single { it.id == "facebook-reels" }.android)
+        assertEquals(ReviewSettings(7, 20 * 60), Rules.parse("""{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"20:00"}}""").review)
         val n = set.notifications!!
         assertTrue(n.deliverEvery in 15..720)
         assertTrue(NotificationAllow(null, "event", null) in n.allow)
@@ -93,6 +94,9 @@ class RulesTest {
             "notifications allow field" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"allow":[{"app":"x"}]}}""",
             "notifications deliverAt" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"deliverAt":["9:00"]}}""",
             "notifications deliverAt empty" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"deliverAt":[]}}""",
+            "review weekday" to """{"schemaVersion":1,"rules":[],"review":{"weekday":0,"time":"20:00"}}""",
+            "review time" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"8pm"}}""",
+            "review field" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"20:00","day":"sun"}}""",
             "matchers not array" to withAndroid("""{"packages":["p"],"feed":{"viewId":"x"}}"""),
         )
         for ((name, json) in bad) {
@@ -111,6 +115,7 @@ class RulesTest {
             """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":120,
                "deliverAt":["18:00","09:00","13:30"],"allow":[{"package":"com.whatsapp","titleContains":"Annem"}]}}""",
         )
+        assertEquals(ReviewSettings(7, 20 * 60), Rules.parse("""{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"20:00"}}""").review)
         val n = set.notifications!!
         assertEquals(listOf(9 * 60, 13 * 60 + 30, 18 * 60), n.slots)
         assertEquals(30, n.keepDays)

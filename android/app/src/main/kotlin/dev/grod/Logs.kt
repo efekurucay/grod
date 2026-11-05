@@ -7,6 +7,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.zip.GZIPOutputStream
@@ -72,6 +73,20 @@ class LogWriter(
             dir.mkdirs()
             File(dir, LogFiles.name(kind, today)).appendText(line + "\n")
         }
+    }
+
+    /** Copies every log file into [target], on the writer thread so no half-written line is copied. */
+    fun copyTo(target: File) {
+        val done = CountDownLatch(1)
+        executor.execute {
+            try {
+                target.mkdirs()
+                dir.listFiles()?.forEach { it.copyTo(File(target, it.name), overwrite = true) }
+            } finally {
+                done.countDown()
+            }
+        }
+        done.await()
     }
 
     private fun tidy(today: LocalDate, keepDays: Int) {

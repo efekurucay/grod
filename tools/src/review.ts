@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { readLogs, readUsage, summarize } from './phone.ts';
+import { phoneSummary } from './phone.ts';
 import { revision, writeAtomic } from './rules.ts';
 
 /** Outside the repository on purpose: reviews hold personal data and the repo may be public. */
@@ -18,7 +18,7 @@ export function isoWeek(date = new Date()): string {
 }
 
 export function snapshot(days = 7): string {
-  const data = { week: isoWeek(), taken: new Date().toISOString(), rulesRevision: revision(), ...summarize(days, readLogs(days), readUsage()) };
+  const data = { week: isoWeek(), taken: new Date().toISOString(), rulesRevision: revision(), ...phoneSummary(days) };
   mkdirSync(reviewsDir, { recursive: true });
   const path = join(reviewsDir, `${data.week}.json`);
   writeAtomic(path, JSON.stringify(data, null, 2) + '\n');

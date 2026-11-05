@@ -15,7 +15,7 @@ import {
   type Rule,
 } from './rules.ts';
 import { addChannel, removeChannel, resolveChannel } from './channels.ts';
-import { readLogs, readUsage, searchNotifications, summarize } from './phone.ts';
+import { phoneSummary, readPhone, searchNotifications } from './phone.ts';
 import { history, snapshot } from './review.ts';
 import { deliver, sync } from './sync.ts';
 
@@ -193,7 +193,7 @@ server.registerTool(
       'What pulled the user in over the last days, read from the phone over adb: notifications per app and per hour, how many grod held, rule fires (blocked Reels/Shorts/channels), and screen time per app. Use it to suggest new rules or notification exceptions.',
     inputSchema: z.object({ days: z.number().int().min(1).max(365).default(7) }),
   },
-  ({ days }) => tool(() => summarize(days, readLogs(days), readUsage())),
+  ({ days }) => tool(() => phoneSummary(days)),
 );
 
 server.registerTool(
@@ -208,7 +208,7 @@ server.registerTool(
       days: z.number().int().min(1).max(365).default(30),
     }),
   },
-  ({ query, app, withdrawnOnly, days }) => tool(() => searchNotifications(readLogs(days), { query, app, withdrawnOnly })),
+  ({ query, app, withdrawnOnly, days }) => tool(() => searchNotifications(readPhone(days).logs, { query, app, withdrawnOnly })),
 );
 
 server.registerTool(

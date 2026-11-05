@@ -12,7 +12,7 @@ import {
   type Rule,
 } from './rules.ts';
 import { addChannel, listChannels, normalizeHandle, removeChannel, resolveChannel } from './channels.ts';
-import { readLogs, readUsage, searchNotifications, summarize } from './phone.ts';
+import { phoneSummary, readPhone, searchNotifications } from './phone.ts';
 import { history, snapshot } from './review.ts';
 import { deliver, sync } from './sync.ts';
 
@@ -197,13 +197,13 @@ function phone([sub, ...rest]: string[]): void {
   };
   if (sub === 'stats') {
     const days = Number(rest[0] ?? 7);
-    console.log(JSON.stringify(summarize(days, readLogs(days), readUsage()), null, 2));
+    console.log(JSON.stringify(phoneSummary(days), null, 2));
     return;
   }
   if (sub === 'search') {
     const days = Number(flag('days') ?? 30);
     const query = rest[0]?.startsWith('--') ? undefined : rest[0];
-    const hits = searchNotifications(readLogs(days), { query, app: flag('app'), withdrawnOnly: rest.includes('--withdrawn') });
+    const hits = searchNotifications(readPhone(days).logs, { query, app: flag('app'), withdrawnOnly: rest.includes('--withdrawn') });
     for (const h of hits) console.log(`${h.time}  ${h.app}  ${h.title ?? ''}: ${h.text ?? ''}`);
     return;
   }
