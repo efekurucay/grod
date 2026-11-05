@@ -16,7 +16,9 @@ export const ANDROID_CHANNELS_PATH = `/sdcard/Android/data/${ANDROID_PACKAGE}/fi
 
 export type SyncReport = { revision: string; wrote: string[]; adb: string; pulledChannels: string[] };
 
-export function sync({ adb = process.env.GROD_ADB !== '0' } = {}): SyncReport {
+export function sync({ adb: wanted = true } = {}): SyncReport {
+  // GROD_ADB=0 wins over every caller, so test copies of the rules can never reach a real phone.
+  const adb = wanted && process.env.GROD_ADB !== '0';
   const devices = adb ? phones() : [];
   const pulledChannels = devices.length ? pullChannels(devices) : [];
   const file = load();

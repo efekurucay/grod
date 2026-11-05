@@ -4,6 +4,8 @@ import Foundation
 public struct Rules: Codable, Sendable {
     public let schemaVersion: Int
     public let rules: [Rule]
+    public let notifications: NotificationSettings?
+    public let review: ReviewSettings?
 }
 
 public struct Rule: Codable, Sendable {
@@ -11,6 +13,7 @@ public struct Rule: Codable, Sendable {
     public let title: String
     public let why: String?
     public let enabled: Bool
+    public let youtubeChannels: [YouTubeChannel]?
     public let web: WebRules?
     public let macos: MacRules?
 }
@@ -29,6 +32,37 @@ public struct Redirect: Codable, Sendable {
 
 public struct MacRules: Codable, Sendable {
     public let quitApps: [String]?
+}
+
+public struct YouTubeChannel: Codable, Sendable, Hashable {
+    public let name: String
+    public let handle: String
+    public let id: String?
+}
+
+public struct NotificationSettings: Codable, Sendable, Equatable {
+    public let enabled: Bool
+    public let deliverEvery: Int
+    public let deliverAt: [String]?
+    public let allow: [NotificationAllow]?
+    public let keepDays: Int?
+}
+
+public struct NotificationAllow: Codable, Sendable, Hashable {
+    public let package: String?
+    public let category: String?
+    public let titleContains: String?
+
+    public init(package: String? = nil, category: String? = nil, titleContains: String? = nil) {
+        self.package = package
+        self.category = category
+        self.titleContains = titleContains
+    }
+}
+
+public struct ReviewSettings: Codable, Sendable, Equatable {
+    public let weekday: Int
+    public let time: String
 }
 
 public struct RulesSnapshot: Sendable {

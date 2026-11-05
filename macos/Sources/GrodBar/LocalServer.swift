@@ -135,27 +135,15 @@ final class LocalServer {
         }
         var arguments = ["channel", "add", "--name", name, "--handle", handle]
         if let channelID = object["id"] as? String, channelID.hasPrefix("UC") { arguments += ["--id", channelID] }
-        guard let node = Bundle.main.object(forInfoDictionaryKey: "GrodNodePath") as? String,
-              let cli = Bundle.main.object(forInfoDictionaryKey: "GrodCLIPath") as? String else {
-            send(id, status: "500 Internal Server Error", type: "text/plain", body: Data("grod CLI path not configured".utf8)); return
-        }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: node)
-        process.arguments = [cli] + arguments
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = output
-        process.terminationHandler = { [weak self] finished in
-            let text = output.fileHandleForReading.readDataToEndOfFile()
-            Task { @MainActor in
-                guard let self else { return }
-                self.store.reload()
-                let ok = finished.terminationStatus == 0
-                self.send(id, status: ok ? "200 OK" : "500 Internal Server Error", type: "text/plain; charset=utf-8", body: text)
+        let cli = GrodCLI(rulesURL: store.url)
+        Task { @MainActor [weak self] in
+            let result: (status: String, text: String)
+            do { result = ("200 OK", try await cli.run(arguments)) } catch {
+                result = ("500 Internal Server Error", error.localizedDescription)
             }
-        }
-        do { try process.run() } catch {
-            send(id, status: "500 Internal Server Error", type: "text/plain", body: Data(error.localizedDescription.utf8))
+            guard let self else { return }
+            self.store.reload()
+            self.send(id, status: result.status, type: "text/plain; charset=utf-8", body: Data(result.text.utf8))
         }
     }
 

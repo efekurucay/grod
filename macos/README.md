@@ -22,3 +22,9 @@ extension's responsibility. Other browsers are not controlled by the app.
 
 `./install.sh` builds, copies the app to `~/Applications`, and replaces and loads
 the `dev.grod.bar` LaunchAgent. It runs at login without restart-on-quit behavior.
+
+Settings… (⌘,) changes rules, phone notification batching, blocked channels, the weekly
+review time and the Safari guard. Every change runs the grod CLI (`GrodNodePath`,
+`GrodCLIPath`), which validates, saves and pushes to the phone; the window shows the
+phone's adb status (`GrodAdbPath`) while open and syncs a phone that is behind.
+Colors in `Sources/GrodBar/GrodColors.swift` come from `ui/tokens.json` via `node ui/build.mjs`.

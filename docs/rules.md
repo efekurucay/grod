@@ -83,6 +83,7 @@ The top-level `review` object (`weekday`, 1 = Monday to 7 = Sunday, and `time`) 
 
 ## macOS
 
+- Settings window (menu → Settings…, ⌘,): rules on/off, notification batching, blocked channels, weekly review, Safari guard. Every change runs through the grod CLI, so the file keeps one writer and the change is pushed to the phone. A status row shows whether the phone is connected (USB or Wi-Fi) and whether it runs the current revision. While the window is open, a phone that is behind gets synced.
 - `macos.quitApps`: bundle ids of enabled rules are quit when they launch or come to the front.
 - Safari guard: while Safari is in front, the app reads the front tab URL every 1.5 s and applies the Web rules above. The blocked page is served at `http://127.0.0.1:47770/blocked?rule=<id>`. Chromium browsers and Firefox are left to the extension, so two enforcers never fight.
 - `GET http://127.0.0.1:47770/rules.json` serves the current valid rules with `revision`. The extension polls it.

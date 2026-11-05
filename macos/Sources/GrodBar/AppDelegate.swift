@@ -1,5 +1,6 @@
 import AppKit
 import GrodCore
+import UserNotifications
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -7,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: RulesStore!
     private var server: LocalServer!
     private var safari: SafariGuard!
+    private var review: ReviewWatcher!
+    private var settings: SettingsWindow!
     private var runtimeError: String?
     private var observers: [NSObjectProtocol] = []
 
@@ -24,13 +27,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         store = RulesStore(url: URL(fileURLWithPath: path))
+        let cli = GrodCLI(rulesURL: store.url)
         safari = SafariGuard(store: store)
         server = LocalServer(store: store)
+        review = ReviewWatcher(cli: cli)
+        let model = SettingsModel(store: store, cli: cli, safariGuard: safari.enabled) { [weak self] enabled in
+            self?.safari.enabled = enabled
+            self?.refreshMenu()
+        }
+        settings = SettingsWindow(model: model, phone: PhoneMonitor(store: store, cli: cli))
+        settings.model.lastReview = review.lastReview
+        NSApp.mainMenu = Self.mainMenu(target: self)
+        if Bundle.main.bundleIdentifier != nil { UNUserNotificationCenter.current().delegate = self }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = Self.mark()
-        store.changed = { [weak self] in self?.refreshMenu() }
+        store.changed = { [weak self] in
+            self?.refreshMenu()
+            self?.settings.model.refresh()
+        }
         server.failed = { [weak self] error in self?.report(error) }
         safari.failed = { [weak self] error in self?.report(error) }
+        review.failed = { [weak self] error in self?.report(error) }
+        review.changed = { [weak self] in
+            guard let self else { return }
+            settings.model.lastReview = review.lastReview
+            refreshMenu()
+        }
         do { try server.start() } catch { report("Local server: \(error.localizedDescription)") }
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didActivateApplicationNotification] {
@@ -90,18 +112,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(withTitle: error, action: nil, keyEquivalent: "")
         }
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         let toggle = menu.addItem(withTitle: "Safari guard: \(safari.enabled ? "on" : "off")", action: #selector(toggleSafari), keyEquivalent: "")
         toggle.state = safari.enabled ? .on : .off
         menu.addItem(withTitle: "Open rules file", action: #selector(openRules), keyEquivalent: "")
         menu.addItem(withTitle: "Reload now", action: #selector(reload), keyEquivalent: "r")
+        menu.addItem(.separator())
+        let last = review.lastReview.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "never"
+        menu.addItem(withTitle: "Last review: \(last)", action: nil, keyEquivalent: "")
+        menu.addItem(withTitle: "Review with Claude…", action: #selector(openReview), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit", action: #selector(quit), keyEquivalent: "q")
         for item in menu.items where item.action != nil { item.target = self }
         statusItem.menu = menu
     }
 
-    @objc private func toggleSafari() { safari.enabled.toggle(); refreshMenu() }
+    @objc private func toggleSafari() {
+        safari.enabled.toggle()
+        settings.model.syncSafariGuard(safari.enabled)
+        refreshMenu()
+    }
+    @objc private func showSettings() { settings.show() }
+    @objc private func openReview() { review.openReview() }
     @objc private func openRules() { NSWorkspace.shared.open(store.url) }
     @objc private func reload() { store.reload() }
     @objc private func quit() { NSApplication.shared.terminate(nil) }
+}
+
+extension AppDelegate {
+    /// Invisible for a menu bar app, but it carries the key equivalents of the Settings window:
+    /// paste into its text fields, close it, open it again.
+    fileprivate static func mainMenu(target: AppDelegate) -> NSMenu {
+        let main = NSMenu()
+        let app = NSMenu()
+        app.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = target
+        app.addItem(withTitle: "Quit grod", action: #selector(quit), keyEquivalent: "q").target = target
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        let window = NSMenu(title: "Window")
+        window.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        for menu in [app, edit, window] {
+            main.addItem(withTitle: menu.title, action: nil, keyEquivalent: "").submenu = menu
+        }
+        return main
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        await MainActor.run { review.openReview() }
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .list]
+    }
 }
