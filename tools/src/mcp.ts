@@ -16,6 +16,7 @@ import {
 } from './rules.ts';
 import { addChannel, removeChannel, resolveChannel } from './channels.ts';
 import { readLogs, readUsage, searchNotifications, summarize } from './phone.ts';
+import { history, snapshot } from './review.ts';
 import { deliver, sync } from './sync.ts';
 
 const server = new McpServer({ name: 'grod', version: '1.0.0' });
@@ -208,6 +209,20 @@ server.registerTool(
     }),
   },
   ({ query, app, withdrawnOnly, days }) => tool(() => searchNotifications(readLogs(days), { query, app, withdrawnOnly })),
+);
+
+server.registerTool(
+  'weekly_reviews',
+  {
+    description:
+      'Past weekly review snapshots (numbers per week) and their notes, stored outside the repo in ~/.config/grod/reviews. take: true first saves this week from the phone over adb. Compare weeks before proposing changes.',
+    inputSchema: z.object({ take: z.boolean().default(false) }),
+  },
+  ({ take }) =>
+    tool(() => {
+      const taken = take ? snapshot() : undefined;
+      return { taken, reviews: history() };
+    }),
 );
 
 server.registerTool(

@@ -73,6 +73,14 @@ While it is enabled:
 - **History:** every notification grod sees is logged on the device (docs/data.md), held or not, and so is its removal. A message deleted for everyone still shows in the history. Logs older than `keepDays` are deleted.
 - **Turning it off:** this restores the user's own Do Not Disturb state and stops holding new notifications. Ones already held still arrive at the time they were given, at most one interval later, because Android 10 cannot change the time of a notification that is already snoozed.
 
+## Weekly review
+
+The top-level `review` object (`weekday`, 1 = Monday to 7 = Sunday, and `time`) sets a weekly check-in.
+
+- **Android:** at that time, the phone posts a grod notification: "Connect me to your computer for the weekly review". grod's own notifications are never held. Tapping it opens the app, which explains the step.
+- **macOS app:** it notices when the phone appears on adb (USB or Wi-Fi). If the last review is more than 6 days old, it runs `grod review snapshot`, which saves the week's numbers (`phone_stats`) to `~/.config/grod/reviews/<YYYY>-W<ww>.json`. It then shows a notification. Clicking it opens Terminal with Claude Code on the `grod-review` skill, which reads the snapshot, writes `<YYYY>-W<ww>.md` next to it with what changed since last week and at most three proposals, and applies nothing without the user's yes.
+- Reviews stay outside the repository, because they hold personal data.
+
 ## macOS
 
 - `macos.quitApps`: bundle ids of enabled rules are quit when they launch or come to the front.

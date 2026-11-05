@@ -34,3 +34,10 @@ test('search finds text, filters by app and by withdrawn', () => {
   assert.equal(searchNotifications(logs, { app: 'instagram' }).length, 1);
   assert.equal(searchNotifications(logs, { withdrawnOnly: true }).length, 2);
 });
+
+test('isoWeek names weeks the ISO way', async () => {
+  const { isoWeek } = await import('../src/review.ts');
+  assert.equal(isoWeek(new Date(2026, 10, 6)), '2026-W45');
+  assert.equal(isoWeek(new Date(2027, 0, 1)), '2026-W53');
+  assert.equal(isoWeek(new Date(2026, 0, 1)), '2026-W01');
+});

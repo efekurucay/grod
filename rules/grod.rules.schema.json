@@ -24,6 +24,9 @@
     },
     "notifications": {
       "$ref": "#/$defs/notifications"
+    },
+    "review": {
+      "$ref": "#/$defs/review"
     }
   },
   "$defs": {
@@ -296,6 +299,28 @@
           "type": "string",
           "minLength": 1,
           "description": "Case-insensitive part of the notification title, e.g. a contact name."
+        }
+      }
+    },
+    "review": {
+      "description": "Weekly review: the phone asks to be connected, the Mac saves the week's data and offers a review with the AI agent.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "weekday",
+        "time"
+      ],
+      "properties": {
+        "weekday": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "description": "ISO weekday, 1 = Monday, 7 = Sunday."
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Local time of the phone's reminder."
         }
       }
     }

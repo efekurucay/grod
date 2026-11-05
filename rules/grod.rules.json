@@ -188,5 +188,9 @@
       }
     ],
     "keepDays": 30
+  },
+  "review": {
+    "weekday": 7,
+    "time": "20:00"
   }
 }

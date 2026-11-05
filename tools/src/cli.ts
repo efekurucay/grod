@@ -13,6 +13,7 @@ import {
 } from './rules.ts';
 import { addChannel, listChannels, normalizeHandle, removeChannel, resolveChannel } from './channels.ts';
 import { readLogs, readUsage, searchNotifications, summarize } from './phone.ts';
+import { history, snapshot } from './review.ts';
 import { deliver, sync } from './sync.ts';
 
 const HELP = `grod — get rid of distracting
@@ -36,6 +37,9 @@ Usage:
   grod notifications allow|disallow <package> | category:<c> | title:<text>
   grod phone stats [days]       what pulled you in: notifications, rule fires, screen time
   grod phone search <text> [--app A] [--withdrawn] [--days N]
+  grod review                   past weekly reviews
+  grod review snapshot          save this week's numbers from the phone
+  grod review set <1-7> <HH:MM> weekly reminder on the phone (1 = Monday)
   grod validate                 check rules/grod.rules.json
   grod sync [--no-adb]          write platform copies, push to a connected phone
   grod revision                 revision every platform shows
@@ -90,6 +94,8 @@ async function main(argv: string[]): Promise<void> {
       return notifications(argv.slice(1));
     case 'phone':
       return phone(argv.slice(1));
+    case 'review':
+      return review(argv.slice(1));
     case 'validate': {
       const errors = validate(JSON.parse(readFileSync(rulesPath, 'utf8')));
       if (errors.length) {
@@ -202,6 +208,26 @@ function phone([sub, ...rest]: string[]): void {
     return;
   }
   throw new Error('usage: grod phone stats [days] | grod phone search <text> [--app A] [--withdrawn] [--days N]');
+}
+
+function review([sub, a, b]: string[]): void {
+  if (!sub) {
+    for (const r of history()) console.log(`${r.week}  ${r.json}${r.notes ? `  ${r.notes}` : ''}`);
+    return;
+  }
+  if (sub === 'snapshot') {
+    console.log(snapshot());
+    return;
+  }
+  if (sub === 'set') {
+    const file = load();
+    file.review = { weekday: Number(need(a, 'weekday 1-7')), time: need(b, 'HH:MM') };
+    save(file);
+    console.log(JSON.stringify(file.review));
+    console.log(deliver());
+    return;
+  }
+  throw new Error('usage: grod review [snapshot | set <1-7> <HH:MM>]');
 }
 
 function need(value: string | undefined, name: string): string {

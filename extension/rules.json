@@ -189,5 +189,9 @@
     ],
     "keepDays": 30
   },
-  "revision": "67278e8d438a"
+  "review": {
+    "weekday": 7,
+    "time": "20:00"
+  },
+  "revision": "e1f765a85233"
 }

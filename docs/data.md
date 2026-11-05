@@ -24,10 +24,21 @@ One JSON object per line. The newest day is plain text and older days are gzippe
 
 ## Export
 
-`adb shell am broadcast -a dev.grod.EXPORT -n dev.grod/.ExportReceiver` writes `files/export/usage.json`: foreground time per app per day for the last `keepDays` days, read from `UsageStatsManager`. Usage access is granted by `android/install.sh`.
+Release builds are not debuggable, so the private files are read through an export into the app's external files dir, which `adb pull` can reach:
+
+```sh
+adb shell am broadcast -a dev.grod.EXPORT -n dev.grod/.ExportReceiver
+adb pull /sdcard/Android/data/dev.grod/files/export/ .
+adb shell am broadcast -a dev.grod.EXPORT_CLEAR -n dev.grod/.ExportReceiver
+```
+
+`dev.grod.EXPORT` writes into `/sdcard/Android/data/dev.grod/files/export/`:
+
+- `usage.json`: foreground time per app per local day for the last `keepDays` days, read from `UsageStatsManager` (usage access: `android/install.sh` or the app's setup list). Without usage access it has an `"error"` field and no days.
+- `log/`: a copy of every file in `files/log/` (the logs above). The private originals stay.
 
 ```json
 {"generated":1762394400123,"days":{"2026-11-06":{"com.instagram.android":5400000,"com.google.android.youtube":1800000}}}
 ```
 
-The app is debuggable, so `adb shell run-as dev.grod cat files/…` reads these files. That is how `grod phone stats` and the MCP tools get them.
+`dev.grod.EXPORT_CLEAR` deletes the export dir, so the copies do not linger in shared storage. Both actions need the `DUMP` permission, which `adb shell` has and apps do not. Debug builds are also debuggable, so `adb shell run-as dev.grod cat files/…` still works there.
