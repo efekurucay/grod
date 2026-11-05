@@ -44,12 +44,23 @@ It runs on **Android**, in **Chromium browsers** (Chrome, Comet, Arc, Brave, Edg
 
 - **Android:** an accessibility service watches only the apps listed in the rules. It recognizes screens by view ids and labels, puts an overlay over the Reels and Shorts tabs that swallows taps, and masks feed thumbnails while letting the page scroll. It leaves a feed with Back.
 - **Browser:** a Manifest V3 extension with CSS hiding, redirects and blocked pages. It handles YouTube's and Instagram's in-page navigation.
-- **macOS:** a small menu bar app that serves the current rules to the extension, so it updates without a reload.
+- **macOS:** a menu bar app with a Settings window. From it you can switch rules on and off, set notification batching, manage blocked channels and set the weekly review. A status row shows whether the phone is connected and up to date. The app also serves the current rules to the extension, so the extension updates without a reload.
 - **Agent:** the `grod` CLI and an MCP server. The rules are validated against a JSON Schema before every save.
 
 Details: [docs/architecture.md](docs/architecture.md) and [docs/rules.md](docs/rules.md).
 
 ## Install
+
+### Just the phone and the browser
+
+Download the latest [release](https://github.com/efekurucay/grod/releases):
+
+- **Android:** open `grod-<version>.apk` on the phone. Then follow the checklist at the top of the app: accessibility, notification access, Do Not Disturb access and usage access. On Android 13+, first go to Settings → Apps → grod → ⋮ → *Allow restricted settings*.
+- **Browser:** unzip `grod-extension-<version>.zip`, open `chrome://extensions`, turn on Developer mode, click *Load unpacked* and pick the folder.
+
+This gives you the default rules. To change them yourself, with an AI agent and the desktop app, set up the full version below.
+
+### Everything (macOS + AI agent)
 
 You need Node 22.18+, and adb for Android. To build the apps yourself you also need Xcode command line tools (macOS) and JDK 17 + the Android SDK (Android).
 
@@ -111,6 +122,10 @@ grod notifications allow com.whatsapp      # or category:reminder, or title:<con
 Or tell Claude: *"WhatsApp messages from my mom should come through right away."*
 
 The phone keeps 30 days of notification history, so a message deleted for everyone can still be found: `grod phone search <text> --withdrawn`.
+
+## Weekly review
+
+Once a week (Sunday 20:00 by default), the phone asks to be connected. Plug it in, or keep it on Wi-Fi adb. The Mac saves the week's numbers to `~/.config/grod/reviews/` and shows *Weekly review ready*. Click it, and Claude Code opens with the `grod-review` skill. It compares the week with the previous ones, suggests at most three changes and writes notes next to the numbers. Reviews stay out of the repository because they hold personal data.
 
 ## Your own data, for your agent
 
