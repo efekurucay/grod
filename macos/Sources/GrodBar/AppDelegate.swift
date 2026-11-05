@@ -51,14 +51,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static func mark() -> NSImage {
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
             let unit = rect.width / 24
-            let center = NSPoint(x: 12 * unit, y: 12 * unit)
-            // Same G as the SVG: an arc open at the upper right, then the bar back toward the center.
-            let g = NSBezierPath()
-            g.appendArc(withCenter: center, radius: 8 * unit, startAngle: 45, endAngle: 360, clockwise: false)
-            g.line(to: NSPoint(x: 12.5 * unit, y: 12 * unit))
-            g.lineWidth = 2.6 * unit
+            // brand/grod-mark.svg flipped to AppKit's y-up space: bowl, then stem curving into the tail.
+            let g = NSBezierPath(ovalIn: NSRect(x: 7 * unit, y: 10 * unit, width: 10 * unit, height: 10 * unit))
+            g.move(to: NSPoint(x: 17 * unit, y: 20 * unit))
+            g.line(to: NSPoint(x: 17 * unit, y: 8.5 * unit))
+            g.appendArc(withCenter: NSPoint(x: 12 * unit, y: 8.5 * unit), radius: 5 * unit, startAngle: 0, endAngle: 270, clockwise: true)
+            g.line(to: NSPoint(x: 9 * unit, y: 3.5 * unit))
+            g.lineWidth = 2.4 * unit
             g.lineCapStyle = .round
-            g.lineJoinStyle = .round
             NSColor.black.setStroke()
             g.stroke()
             return true
