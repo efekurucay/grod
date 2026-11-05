@@ -2,7 +2,7 @@
 
 <h1 align="center">grod</h1>
 
-<p align="center"><b>get rid of distracting</b><br>Removes Reels, Shorts and other endless feeds. Keeps the rest of the app.</p>
+<p align="center"><b>Get rid of distracting. Keep what matters.</b><br>Removes Reels, Shorts and other endless feeds. Keeps the rest of the app.</p>
 
 ---
 
@@ -19,7 +19,7 @@ Blocking Instagram outright also blocks your friends' stories and your DMs, so t
 
 One item is fine. **Swiping on to the next one is what grod stops.**
 
-It runs on **Android**, in **Chromium browsers** (Chrome, Comet, Arc, Brave, Edge) and on **macOS**. It is driven by one rules file, and you change that file by telling an AI agent what distracts you.
+It comes as **grod for Android**, **grod for Chrome** (any Chromium browser: Chrome, Comet, Arc, Brave, Edge), **grod for macOS** and the **grod CLI**. It is driven by one rules file, and you change that file by telling an AI agent what distracts you.
 
 ## Why it works this way
 

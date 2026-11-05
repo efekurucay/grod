@@ -106,7 +106,7 @@ class MainActivity : Activity() {
         )
         brand.addView(ui.text("grod", 24f, bold = true).apply { setPadding(ui.dp(8), 0, 0, 0) })
         addView(brand)
-        addView(ui.muted("Removes short-video feeds and keeps the rest of each app.", 15f).apply { setPadding(0, ui.dp(4), 0, 0) })
+        addView(ui.muted("Get rid of distracting. Keep what matters.", 15f).apply { setPadding(0, ui.dp(4), 0, 0) })
     }
 
     private fun render() {

@@ -6,7 +6,7 @@ Requires Swift 6.3, Xcode 26.6 and macOS 26. No external dependencies.
 swift build
 swift test
 ./build.sh
-open build/Grod.app
+open build/grod.app
 ```
 
 The build embeds the absolute repository rules path in the app's Info.plist.

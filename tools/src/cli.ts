@@ -16,7 +16,7 @@ import { phoneSummary, readPhone, searchNotifications } from './phone.ts';
 import { history, snapshot } from './review.ts';
 import { deliver, sync } from './sync.ts';
 
-const HELP = `grod — get rid of distracting
+const HELP = `grod CLI — get rid of distracting. Keep what matters.
 
 Usage:
   grod list                     rules, state and platforms

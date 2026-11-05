@@ -5,7 +5,7 @@ REPO_DIR="$(cd -- "$MACOS_DIR/.." && pwd)"
 cd "$MACOS_DIR"
 swift build -c release
 BIN_DIR="$(swift build -c release --show-bin-path)"
-APP="$MACOS_DIR/build/Grod.app"
+APP="$MACOS_DIR/build/grod.app"
 mkdir -p "$APP/Contents/MacOS"
 cp "$BIN_DIR/GrodBar" "$APP/Contents/MacOS/GrodBar"
 PLIST="$APP/Contents/Info.plist"
@@ -14,7 +14,7 @@ cat > "$PLIST" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>dev.grod.bar</string>
-<key>CFBundleName</key><string>Grod</string>
+<key>CFBundleName</key><string>grod</string>
 <key>CFBundleExecutable</key><string>GrodBar</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>1.0</string>
