@@ -175,5 +175,18 @@
       "enabled": true,
       "youtubeChannels": []
     }
-  ]
+  ],
+  "notifications": {
+    "enabled": true,
+    "deliverEvery": 60,
+    "allow": [
+      {
+        "category": "event"
+      },
+      {
+        "category": "reminder"
+      }
+    ],
+    "keepDays": 30
+  }
 }

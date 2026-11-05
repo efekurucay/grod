@@ -15,6 +15,7 @@ import {
   type Rule,
 } from './rules.ts';
 import { addChannel, removeChannel, resolveChannel } from './channels.ts';
+import { readLogs, readUsage, searchNotifications, summarize } from './phone.ts';
 import { deliver, sync } from './sync.ts';
 
 const server = new McpServer({ name: 'grod', version: '1.0.0' });
@@ -140,6 +141,73 @@ server.registerTool(
       save(file);
       return `unblocked ${removed.map((c) => c.name).join(', ')}. ${deliver()}`;
     }),
+);
+
+const allowEntry = z
+  .object({ package: z.string().optional(), category: z.string().optional(), titleContains: z.string().optional() })
+  .describe('Every field present must match: app package (com.whatsapp), Android category (event, reminder, msg, …) or part of the title (a contact name)');
+
+server.registerTool(
+  'set_notification_batching',
+  {
+    description:
+      'Android notification batching: hold app notifications (no sound, not in the shade) and deliver them together on the clock, e.g. every 60 minutes on the hour. Calls and alarms always ring. Give only the fields to change. Evidence (Fitz et al. 2019): three batches a day helped attention and mood; hourly batches helped little.',
+    inputSchema: z.object({
+      enabled: z.boolean().optional(),
+      deliverEvery: z.number().int().min(15).max(720).optional().describe('Minutes between deliveries'),
+      deliverAt: z.array(z.string()).optional().describe('Fixed local times like ["09:00","13:00","18:00"]; replaces deliverEvery. Research favors about three a day.'),
+      keepDays: z.number().int().min(0).max(365).optional().describe('Days of notification history kept on the phone'),
+      allow: z.array(allowEntry).optional().describe('Replaces the whole list of notifications that arrive at once'),
+    }),
+  },
+  (change) =>
+    tool(() => {
+      const file = load();
+      file.notifications = { enabled: false, deliverEvery: 60, allow: [{ category: 'event' }, { category: 'reminder' }], keepDays: 30, ...file.notifications };
+      for (const [k, v] of Object.entries(change)) if (v !== undefined) (file.notifications as Record<string, unknown>)[k] = v;
+      save(file);
+      return `${JSON.stringify(file.notifications)}. ${deliver()}`;
+    }),
+);
+
+server.registerTool(
+  'allow_notifications',
+  { description: 'Let matching notifications arrive at once instead of waiting for the next batch.', inputSchema: z.object({ entry: allowEntry }) },
+  ({ entry }) =>
+    tool(() => {
+      const file = load();
+      if (!file.notifications) throw new Error('notification batching is not set up; call set_notification_batching first');
+      const clean = Object.fromEntries(Object.entries(entry).filter(([, v]) => v));
+      if (!Object.keys(clean).length) throw new Error('give package, category or titleContains');
+      file.notifications.allow = [...(file.notifications.allow ?? []).filter((a) => JSON.stringify(a) !== JSON.stringify(clean)), clean];
+      save(file);
+      return `allowed ${JSON.stringify(clean)}. ${deliver()}`;
+    }),
+);
+
+server.registerTool(
+  'phone_stats',
+  {
+    description:
+      'What pulled the user in over the last days, read from the phone over adb: notifications per app and per hour, how many grod held, rule fires (blocked Reels/Shorts/channels), and screen time per app. Use it to suggest new rules or notification exceptions.',
+    inputSchema: z.object({ days: z.number().int().min(1).max(365).default(7) }),
+  },
+  ({ days }) => tool(() => summarize(days, readLogs(days), readUsage())),
+);
+
+server.registerTool(
+  'search_notifications',
+  {
+    description:
+      'Search the notification history kept on the phone (text and title). withdrawnOnly lists notifications the app later took back: deleted messages, but also messages read on another device.',
+    inputSchema: z.object({
+      query: z.string().optional(),
+      app: z.string().optional().describe('App name or package'),
+      withdrawnOnly: z.boolean().default(false),
+      days: z.number().int().min(1).max(365).default(30),
+    }),
+  },
+  ({ query, app, withdrawnOnly, days }) => tool(() => searchNotifications(readLogs(days), { query, app, withdrawnOnly })),
 );
 
 server.registerTool(

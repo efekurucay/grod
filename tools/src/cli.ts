@@ -12,6 +12,7 @@ import {
   type Rule,
 } from './rules.ts';
 import { addChannel, listChannels, normalizeHandle, removeChannel, resolveChannel } from './channels.ts';
+import { readLogs, readUsage, searchNotifications, summarize } from './phone.ts';
 import { deliver, sync } from './sync.ts';
 
 const HELP = `grod — get rid of distracting
@@ -27,6 +28,14 @@ Usage:
                                 hide a YouTube channel everywhere
   grod channel remove <@handle|name>
   grod channel list
+  grod notifications            batching settings (Android)
+  grod notifications on|off
+  grod notifications every <minutes>
+  grod notifications at 09:00,13:00,18:00   fixed delivery times ("at off" to go back to every)
+  grod notifications keep <days>
+  grod notifications allow|disallow <package> | category:<c> | title:<text>
+  grod phone stats [days]       what pulled you in: notifications, rule fires, screen time
+  grod phone search <text> [--app A] [--withdrawn] [--days N]
   grod validate                 check rules/grod.rules.json
   grod sync [--no-adb]          write platform copies, push to a connected phone
   grod revision                 revision every platform shows
@@ -77,6 +86,10 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'channel':
       return channel(argv.slice(1));
+    case 'notifications':
+      return notifications(argv.slice(1));
+    case 'phone':
+      return phone(argv.slice(1));
     case 'validate': {
       const errors = validate(JSON.parse(readFileSync(rulesPath, 'utf8')));
       if (errors.length) {
@@ -135,6 +148,60 @@ async function channel([sub, value, ...rest]: string[]): Promise<void> {
   if (added) save(file);
   console.log(`${added ? 'blocked' : 'already blocked'}: ${found.name} (${normalizeHandle(found.handle)}).`);
   console.log(deliver());
+}
+
+function notifications([sub, value]: string[]): void {
+  const file = load();
+  const n = (file.notifications ??= { enabled: false, deliverEvery: 60, allow: [{ category: 'event' }, { category: 'reminder' }], keepDays: 30 });
+  if (!sub) {
+    console.log(JSON.stringify(n, null, 2));
+    return;
+  }
+  if (sub === 'on' || sub === 'off') n.enabled = sub === 'on';
+  else if (sub === 'every') {
+    n.deliverEvery = Number(need(value, 'minutes'));
+    delete n.deliverAt;
+  } else if (sub === 'at') {
+    const times = need(value, 'HH:MM,HH:MM');
+    if (times === 'off') delete n.deliverAt;
+    else n.deliverAt = times.split(',').map((x) => x.trim());
+  }
+  else if (sub === 'keep') n.keepDays = Number(need(value, 'days'));
+  else if (sub === 'allow' || sub === 'disallow') {
+    const entry = parseAllow(need(value, 'package | category:<c> | title:<text>'));
+    const same = (a: object) => JSON.stringify(a) === JSON.stringify(entry);
+    n.allow = (n.allow ?? []).filter((a) => !same(a));
+    if (sub === 'allow') n.allow.push(entry);
+  } else throw new Error('usage: grod notifications [on|off|every <min>|keep <days>|allow|disallow <entry>]');
+  save(file);
+  console.log(JSON.stringify(n, null, 2));
+  console.log(deliver());
+}
+
+function parseAllow(value: string) {
+  if (value.startsWith('category:')) return { category: value.slice(9) };
+  if (value.startsWith('title:')) return { titleContains: value.slice(6) };
+  return { package: value };
+}
+
+function phone([sub, ...rest]: string[]): void {
+  const flag = (name: string) => {
+    const i = rest.indexOf(`--${name}`);
+    return i === -1 ? undefined : rest[i + 1];
+  };
+  if (sub === 'stats') {
+    const days = Number(rest[0] ?? 7);
+    console.log(JSON.stringify(summarize(days, readLogs(days), readUsage()), null, 2));
+    return;
+  }
+  if (sub === 'search') {
+    const days = Number(flag('days') ?? 30);
+    const query = rest[0]?.startsWith('--') ? undefined : rest[0];
+    const hits = searchNotifications(readLogs(days), { query, app: flag('app'), withdrawnOnly: rest.includes('--withdrawn') });
+    for (const h of hits) console.log(`${h.time}  ${h.app}  ${h.title ?? ''}: ${h.text ?? ''}`);
+    return;
+  }
+  throw new Error('usage: grod phone stats [days] | grod phone search <text> [--app A] [--withdrawn] [--days N]');
 }
 
 function need(value: string | undefined, name: string): string {

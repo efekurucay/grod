@@ -25,6 +25,7 @@ What the research says about short-form feeds and about tools that try to curb t
 - **Okeke, Sobolev, Dell, Estrin (2018).** "Good Vibrations." MobileHCI '18. https://doi.org/10.1145/3229434.3229463. A vibration nudge cut Facebook time by more than 20%, but use returned to baseline once the nudge was removed.
 - **Monge Roffarello & De Russis (2023).** "Achieving Digital Wellbeing Through Digital Self-control Tools." ACM TOCHI 30(4). https://doi.org/10.1145/3571810. These tools work in the short term, but the effect fades.
 - **Monge Roffarello & De Russis (2023).** "Nudging Users or Redesigning Interfaces?" GoodIT '23. https://doi.org/10.1145/3582515.3609523. Both a nudge and a redesign reduced passive scrolling.
+- **Fitz, Kushlev, Jagannathan, Lewis, Paliwal, Ariely (2019).** "Batching smartphone notifications can improve well-being." *Computers in Human Behavior* 101. https://doi.org/10.1016/j.chb.2019.07.016. Field experiment, N=237. Getting notifications three times a day improved attention, productivity and mood. No notifications at all raised anxiety and fear of missing out. Hourly batching helped little.
 - **Meinhardt et al. (2025).** "Scrolling in the Deep." https://arxiv.org/abs/2501.11814. Context matters: being at home in a bad mood made interventions work more slowly.
 - **Meinhardt, Dragic, Colley, Lukoff, Rukzio (2026).** "Can't Stop: Gradual Interventions for Infinite Scrolling on Short-Form Video Platforms." IMWUT. https://arxiv.org/abs/2607.15818. 7 days, N=104. People learn to ignore simple pop-ups; gradually increasing visual friction stays effective longest.
 
@@ -35,7 +36,8 @@ What the research says about short-form feeds and about tools that try to curb t
 3. **One item is fine, the scroll is not.** A Short opens as a normal video; a reel sent in a DM plays once. Swiping on to the next one is what gets stopped (Chiossi 2023: the harm comes from rapid switching).
 4. **Stable, explained interventions.** Rules do not rotate. When a rule acts, grod says which one and what stays usable (Kovacs 2018).
 5. **Light, private logging.** Each platform only counts how often each rule fired, on the device. There is no dashboard, because dashboards do not raise agency (Zhang 2022; Okeke 2018).
-6. **The user defines distraction.** Rules are data the user (or their agent) changes in one place (Lyngs 2020).
+6. **Notifications in batches, not off.** The phone holds app notifications and delivers them together. Calls and alarms still ring, so nothing urgent is lost (Fitz 2019).
+7. **The user defines distraction.** Rules are data the user (or their agent) changes in one place (Lyngs 2020).
 
 ## Not built, with the evidence for each
 

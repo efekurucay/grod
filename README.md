@@ -97,6 +97,25 @@ grod sync                       # push again, e.g. after plugging the phone in
 
 The channel's videos disappear from home, search and recommendations. If one is opened anyway, grod stops it and leaves the page.
 
+## Notifications, delivered on the hour (Android)
+
+Turn on batching and the phone stops pinging. App notifications are held: no sound, nothing in the shade. On the hour, the original notifications all arrive together, so reply buttons and taps work as usual. Calls and alarms always ring, and calendar reminders come through at once. In a field experiment with 237 people, getting notifications three times a day improved attention, productivity and mood. Turning notifications off entirely made people anxious, and hourly batches helped little ([Fitz et al., 2019](https://doi.org/10.1016/j.chb.2019.07.016)). Start hourly if that feels safer, then move toward fixed times.
+
+```sh
+grod notifications on
+grod notifications every 60                # or 120, 180, …
+grod notifications at 09:00,13:00,18:00    # fixed times instead
+grod notifications allow com.whatsapp      # or category:reminder, or title:<contact name>
+```
+
+Or tell Claude: *"WhatsApp messages from my mom should come through right away."*
+
+The phone keeps 30 days of notification history, so a message deleted for everyone can still be found: `grod phone search <text> --withdrawn`.
+
+## Your own data, for your agent
+
+Every notification, every time a rule acts, and screen time per app are logged on the phone (format: [docs/data.md](docs/data.md)). Ask Claude *"what's been distracting me this week?"* The `grod-review` skill reads the data over adb (`phone_stats`) and suggests at most three changes, each backed by a number. You decide which to apply.
+
 ## Privacy
 
 - Nothing leaves your devices. There are no accounts, no analytics and no server.
@@ -104,7 +123,7 @@ The channel's videos disappear from home, search and recommendations. If one is 
 - Network use:
   - The extension talks only to `127.0.0.1`.
   - The Android app goes online only for an optional rules URL you set yourself, and for resolving a channel you share to it (YouTube oEmbed).
-- Each platform keeps only a count of how often each rule acted, on the device.
+- The phone logs notifications, rule actions and screen time in the app's private storage. Logs are deleted after `keepDays` (30 by default), and only adb on your own computer can read them.
 
 ## Limits
 

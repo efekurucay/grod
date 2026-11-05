@@ -58,6 +58,21 @@ Adding a channel:
 - Android: YouTube → Share → grod. The app resolves the channel (YouTube oEmbed for a video link, the channel page for a channel link), applies it at once and lists it in `channels-added.json` in its external files dir; `grod sync` merges that file into the rules.
 - Agent or terminal: `grod channel add <video or channel URL | @handle>`.
 
+## Notifications (Android)
+
+The top-level `notifications` object batches app notifications. Settings: `enabled`, `deliverEvery` (minutes) or `deliverAt` (fixed local times such as `["09:00", "13:00", "18:00"]`, which replaces `deliverEvery`), `allow` and `keepDays`.
+
+While it is enabled:
+- **Sound and vibration:** grod keeps Do Not Disturb on with a policy that lets through calls from anyone, repeat callers, alarms, media, and the `event` and `reminder` categories. Calls ring normally. Other notifications make no sound.
+- **Holding:** each held notification is snoozed (`NotificationListenerService.snoozeNotification`) until the next delivery time. With `deliverEvery`, delivery times are aligned to the clock: with 60 they fall on the hour, with 120 on even hours. With `deliverAt`, held notifications wait for the next listed time. Android posts the original notifications again at that time, so reply buttons and taps work as usual. A notification that an app updates while held is snoozed again to the same delivery time.
+- **Not held:**
+  - anything matching an `allow` entry (every field in the entry must match: `package`, `category`, `titleContains`, case-insensitive);
+  - category `call` or `alarm`;
+  - ongoing and foreground-service notifications;
+  - grod's own notifications.
+- **History:** every notification grod sees is logged on the device (docs/data.md), held or not, and so is its removal. A message deleted for everyone still shows in the history. Logs older than `keepDays` are deleted.
+- **Turning it off:** this restores the user's own Do Not Disturb state and releases every held notification at once.
+
 ## macOS
 
 - `macos.quitApps`: bundle ids of enabled rules are quit when they launch or come to the front.

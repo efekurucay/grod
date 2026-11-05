@@ -21,6 +21,9 @@
       "items": {
         "$ref": "#/$defs/rule"
       }
+    },
+    "notifications": {
+      "$ref": "#/$defs/notifications"
     }
   },
   "$defs": {
@@ -230,6 +233,69 @@
           "type": "string",
           "pattern": "^UC[A-Za-z0-9_-]{22}$",
           "description": "Channel id, for pages that link /channel/<id> instead of the handle."
+        }
+      }
+    },
+    "notifications": {
+      "description": "Android: hold app notifications and deliver them together on a clock schedule. Calls and alarms always ring.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "deliverEvery"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "deliverEvery": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 720,
+          "description": "Minutes between deliveries, aligned to the clock: 60 delivers on the hour, 120 at even hours."
+        },
+        "deliverAt": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "description": "Fixed local delivery times (\"09:00\", \"13:00\", \"18:00\"). When set, it replaces deliverEvery."
+        },
+        "allow": {
+          "type": "array",
+          "description": "Notifications that arrive at once. Every field present must match.",
+          "items": {
+            "$ref": "#/$defs/notificationAllow"
+          }
+        },
+        "keepDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 365,
+          "default": 30,
+          "description": "Days the on-device notification history is kept; 0 keeps none."
+        }
+      }
+    },
+    "notificationAllow": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "package": {
+          "type": "string",
+          "description": "App package, e.g. com.whatsapp."
+        },
+        "category": {
+          "type": "string",
+          "description": "Android notification category: event, reminder, alarm, call, msg, email, …"
+        },
+        "titleContains": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Case-insensitive part of the notification title, e.g. a contact name."
         }
       }
     }

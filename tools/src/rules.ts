@@ -31,7 +31,11 @@ export type Rule = {
   macos?: { quitApps?: string[] };
 };
 
-export type RulesFile = { $schema?: string; schemaVersion: 1; rules: Rule[] };
+export type NotificationAllow = { package?: string; category?: string; titleContains?: string };
+
+export type Notifications = { enabled: boolean; deliverEvery: number; deliverAt?: string[]; allow?: NotificationAllow[]; keepDays?: number };
+
+export type RulesFile = { $schema?: string; schemaVersion: 1; rules: Rule[]; notifications?: Notifications };
 
 /** Repo root. GROD_HOME wins so the CLI works from any checkout. */
 export const repoRoot = process.env.GROD_HOME
