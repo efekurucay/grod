@@ -176,5 +176,18 @@
       "youtubeChannels": []
     }
   ],
-  "revision": "7c4e95d57738"
+  "notifications": {
+    "enabled": true,
+    "deliverEvery": 60,
+    "allow": [
+      {
+        "category": "event"
+      },
+      {
+        "category": "reminder"
+      }
+    ],
+    "keepDays": 30
+  },
+  "revision": "67278e8d438a"
 }
