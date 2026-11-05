@@ -8,7 +8,9 @@ import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT as WRAP
 import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
@@ -24,6 +26,7 @@ class MainActivity : Activity() {
     private lateinit var serviceStatus: TextView
     private lateinit var syncStatus: TextView
     private lateinit var ruleList: LinearLayout
+    private lateinit var channelList: LinearLayout
     private lateinit var urlInput: EditText
     private val onStoreChanged: () -> Unit = { render() }
 
@@ -44,6 +47,10 @@ class MainActivity : Activity() {
         column.addView(heading("Rules"))
         syncStatus = text("", 14f).also(column::addView)
         ruleList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also(column::addView)
+
+        column.addView(heading("Blocked YouTube channels"))
+        column.addView(text("Add one from YouTube: Share → grod.", 14f))
+        channelList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also(column::addView)
 
         column.addView(heading("Rules URL (optional, HTTPS)"))
         urlInput = EditText(this).apply {
@@ -90,6 +97,20 @@ class MainActivity : Activity() {
             val line = "${rule.title}\n$state · ${rule.platforms.size} platforms$overlays · fired ${store.fireCount(rule.id)}×"
             ruleList.addView(text(line, 15f).apply { setPadding(0, dp(8), 0, 0) })
         }
+        channelList.removeAllViews()
+        for ((channel, ruleId) in store.rules.channels) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(8), 0, 0)
+            }
+            val from = ruleId?.let { "rule $it" } ?: "added on this phone"
+            row.addView(text("${channel.name}\n${channel.handle} · $from", 15f), LinearLayout.LayoutParams(0, WRAP, 1f))
+            // Rule channels are removed with `grod channel remove`; the phone only owns what it added.
+            if (ruleId == null) row.addView(button("Remove") { store.removeLocalChannel(channel.handle) })
+            channelList.addView(row)
+        }
+        if (store.rules.channels.isEmpty()) channelList.addView(text("None", 15f))
     }
 
     private fun serviceEnabled(): Boolean {

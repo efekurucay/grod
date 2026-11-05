@@ -38,20 +38,20 @@ fi
 
 say "Enabling accessibility service $SERVICE"
 current="$(adb shell settings get secure enabled_accessibility_services | tr -d '\r')"
-case ":$current:" in
-  *":$SERVICE:"* | *":$SERVICE_SHORT:"*)
-    echo "    already enabled"
-    ;;
-  *)
-    if [ -z "$current" ] || [ "$current" = "null" ]; then
-      updated="$SERVICE"
-    else
-      updated="$current:$SERVICE"
-    fi
-    adb shell settings put secure enabled_accessibility_services "$updated"
-    echo "    enabled (services: $updated)"
-    ;;
-esac
+others="$(printf '%s' "$current" | tr ':' '\n' | grep -v -x -e "$SERVICE" -e "$SERVICE_SHORT" -e null | paste -sd: - || true)"
+# Some phones (Huawei, Android 10) do not rebind an updated service, so it is switched off and on again.
+adb shell settings put secure enabled_accessibility_services "${others:-null}"
+# The settings observer coalesces quick writes; without a pause it sees no change and keeps the old binding.
+sleep 1
+updated="${others:+$others:}$SERVICE"
+adb shell settings put secure enabled_accessibility_services "$updated"
+echo "    enabled (services: $updated)"
+# YouTube stops publishing tile descriptions while accessibility is briefly off and only republishes
+# them after a restart; without them its masks and channel blocking see nothing.
+for app in com.google.android.youtube app.revanced.android.youtube; do
+  adb shell am force-stop "$app"
+done
+echo "    restarted YouTube so it reads the accessibility state again"
 adb shell settings put secure accessibility_enabled 1
 
 say "Pushing rules"

@@ -34,9 +34,11 @@ export function sync({ adb = process.env.GROD_ADB !== '0' } = {}): SyncReport {
   return { revision: rev, wrote, adb: adb ? pushToPhone(compiled, devices) : 'skipped', pulledChannels };
 }
 
+/** One serial per phone: a phone on USB and on Wi-Fi adb at once shows up twice. */
 function phones(): string[] {
+  let serials: string[];
   try {
-    return execFileSync('adb', ['devices'], { encoding: 'utf8' })
+    serials = execFileSync('adb', ['devices'], { encoding: 'utf8' })
       .split('\n')
       .slice(1)
       .filter((l) => l.trim().endsWith('\tdevice'))
@@ -44,6 +46,18 @@ function phones(): string[] {
   } catch {
     return [];
   }
+  const seen = new Set<string>();
+  return serials.filter((serial) => {
+    let id = serial;
+    try {
+      id = execFileSync('adb', ['-s', serial, 'shell', 'getprop', 'ro.serialno'], { encoding: 'utf8' }).trim() || serial;
+    } catch {
+      // Keep the adb serial as the identity.
+    }
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 function pullChannels(devices: string[]): string[] {

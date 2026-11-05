@@ -173,12 +173,7 @@
       "title": "Blocked YouTube channels",
       "why": "You blocked this channel. Everything else on YouTube stays.",
       "enabled": true,
-      "youtubeChannels": [
-        {
-          "name": "Blender",
-          "handle": "@BlenderOfficial"
-        }
-      ]
+      "youtubeChannels": []
     }
   ]
 }

@@ -45,16 +45,16 @@ object RuleFetch {
             conn.disconnect()
         }
     }
+}
 
-    // InputStream.readNBytes is API 33+; minSdk is 26.
-    private fun InputStream.readNBytesCompat(max: Int): ByteArray {
-        val out = ByteArrayOutputStream()
-        val buf = ByteArray(8192)
-        while (out.size() < max) {
-            val n = read(buf, 0, minOf(buf.size, max - out.size()))
-            if (n < 0) break
-            out.write(buf, 0, n)
-        }
-        return out.toByteArray()
+/** Reads at most [max] bytes; InputStream.readNBytes is API 33+ and minSdk is 26. */
+fun InputStream.readNBytesCompat(max: Int): ByteArray {
+    val out = ByteArrayOutputStream()
+    val buf = ByteArray(8192)
+    while (out.size() < max) {
+        val n = read(buf, 0, minOf(buf.size, max - out.size()))
+        if (n < 0) break
+        out.write(buf, 0, n)
     }
+    return out.toByteArray()
 }

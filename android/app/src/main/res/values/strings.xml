@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">grod</string>
+    <string name="share_label">grod: block channel</string>
     <string name="service_description">grod covers the Reels and Shorts tabs and leaves short-video feeds in Instagram, YouTube, TikTok and Snapchat. Stories, posts, DMs and normal videos keep working. It reads only the screens of the apps listed in its rules and sends nothing anywhere.</string>
 </resources>

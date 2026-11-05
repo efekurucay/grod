@@ -6,3 +6,4 @@ local.properties
 .rules-push.json
 .idea/
 *.iml
+.channels-empty.json

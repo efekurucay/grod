@@ -239,4 +239,45 @@ class EngineTest {
         assertEquals(1, tree.walks)
         assertEquals(0, tree.textSearches)
     }
+
+    @Test
+    fun oneLearnedMatcherSwitchesThePackageToWalk() {
+        val shortsTab = FakeNode(descValue = "Shorts", bounds = Box(300, 2100, 500, 2200))
+        val tab = Matcher(desc = "Shorts")
+        val tileMask = Matcher(descContains = "play Short")
+        val scanner = Scanner()
+        // First screen: no tiles yet, but the tab teaches that text search does not work here.
+        scanner.scan(FakeTree(listOf(shortsTab), textSearchWorks = false), "yt", listOf(tab, tileMask), 0)
+        val tile = FakeNode(descValue = "Funny cat - play Short", bounds = Box(0, 300, 540, 900))
+        val tree = FakeTree(listOf(shortsTab, tile), textSearchWorks = false)
+        // Inside the probe interval, the tiles are still found right away.
+        assertEquals(listOf(tile.bounds), scanner.scan(tree, "yt", listOf(tab, tileMask), 100)[tileMask])
+        assertEquals(0, tree.textSearches)
+        // Learning is per package.
+        val other = FakeTree(listOf(tile))
+        scanner.scan(other, "ig", listOf(tileMask), 100)
+        assertEquals(1, other.textSearches)
+    }
+
+    @Test
+    fun manyNeedlesUseOneWalk() {
+        val tree = FakeTree(emptyList())
+        val matchers = (1..(Scanner.MAX_TEXT_SEARCHES + 1)).map { Matcher(descContains = "Go to channel $it -") }
+        Scanner().scan(tree, "p", matchers, 0)
+        assertEquals(0, tree.textSearches)
+        assertEquals(1, tree.walks)
+    }
+
+    @Test
+    fun learnedPackagesAreReportedAndRestored() {
+        var saved = emptySet<String>()
+        val scanner = Scanner(onLearned = { saved = it })
+        val tile = FakeNode(descValue = "Cat - play Short", bounds = Box(0, 0, 10, 10))
+        scanner.scan(FakeTree(listOf(tile), textSearchWorks = false), "yt", listOf(Matcher(descContains = "play Short")), 0)
+        assertEquals(setOf("yt"), saved)
+        val restored = FakeTree(listOf(tile), textSearchWorks = false)
+        Scanner(learned = saved).scan(restored, "yt", listOf(Matcher(descContains = "play Short")), 0)
+        assertEquals(0, restored.textSearches)
+        assertEquals(1, restored.walks)
+    }
 }

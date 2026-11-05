@@ -11,6 +11,8 @@ data class Matcher(
     val desc: String? = null,
     val descContains: String? = null,
     val selected: Boolean? = null,
+    /** Not in the rules format; generated channel rules use it for playlist tiles. */
+    val descStartsWith: String? = null,
 )
 
 enum class Action { BACK, HOME }
@@ -22,6 +24,18 @@ data class AndroidRule(
     val cover: List<Matcher>,
     val mask: List<Matcher>,
     val action: Action,
+    // The fields below are not in the rules format; only generated channel rules set them.
+    /** When set, the feed counts only on one of these pages (e.g. a full watch page, not the miniplayer). */
+    val page: List<Matcher> = emptyList(),
+    /** After the action: media is paused and these are clicked once they appear (YouTube's miniplayer close). */
+    val dismiss: List<Matcher> = emptyList(),
+    /** What follows a Back when the feed is still on screen 1.5 s later. */
+    val escalate: Action = Action.HOME,
+    /**
+     * A page showing the title of one of this rule's masked tiles counts as feed, and once the action
+     * fired on a page, that page keeps counting until it is gone (a Back may only collapse a panel).
+     */
+    val followTiles: Boolean = false,
 )
 
 data class Rule(
@@ -31,10 +45,16 @@ data class Rule(
     val enabled: Boolean,
     val platforms: List<String>,
     val android: AndroidRule?,
+    val youtubeChannels: List<Channel> = emptyList(),
+    /** Fire counter key; a generated channel rule counts under the rule that lists the channel. */
+    val countAs: String = id,
 )
 
-data class RuleSet(val revision: String?, val rules: List<Rule>) {
-    private val active = rules.filter { it.enabled && it.android != null }
+/** Parsed rules plus the channels added on this phone ([localChannels]), which apply on top. */
+data class RuleSet(val revision: String?, val rules: List<Rule>, val localChannels: List<Channel> = emptyList()) {
+    val channels: List<ChannelEntry> = mergeChannels(rules, localChannels)
+
+    private val active = rules.filter { it.enabled && it.android != null } + channelRules(rules, channels)
 
     /** Packages the service listens to. */
     val targetPackages: Set<String> = active.flatMap { it.android!!.packages }.toSet()
@@ -58,6 +78,9 @@ object Rules {
     private val PLATFORMS = listOf("web", "android", "macos")
     private val ANDROID_KEYS = setOf("packages", "feed", "exempt", "cover", "mask", "action")
     private val MATCHER_KEYS = setOf("viewId", "text", "desc", "descContains", "selected")
+    private val CHANNEL_KEYS = setOf("name", "handle", "id")
+    private val HANDLE = Regex("^@[^\\s/?#]+$")
+    private val CHANNEL_ID = Regex("^UC[A-Za-z0-9_-]{22}$")
 
     fun parse(json: String): RuleSet {
         val root = try {
@@ -90,7 +113,25 @@ object Rules {
         val android = o.opt("android")?.let {
             parseAndroid(it as? JSONObject ?: fail("$path.android", "must be an object"), "$path.android")
         }
-        return Rule(id, title, why, enabled, PLATFORMS.filter { o.has(it) }, android)
+        val channels = o.opt("youtubeChannels")?.let { parseChannels(it, "$path.youtubeChannels") }.orEmpty()
+        return Rule(id, title, why, enabled, PLATFORMS.filter { o.has(it) }, android, channels)
+    }
+
+    /** A `youtubeChannel` array; also the format of channels-added.json's "channels". */
+    fun parseChannels(raw: Any, path: String): List<Channel> {
+        val arr = raw as? JSONArray ?: fail(path, "must be an array")
+        return (0 until arr.length()).map { i ->
+            val p = "$path[$i]"
+            val o = arr.opt(i) as? JSONObject ?: fail(p, "must be an object")
+            unknownKey(o, CHANNEL_KEYS)?.let { fail("$p.$it", "unknown field") }
+            val name = o.opt("name") as? String
+            if (name.isNullOrEmpty()) fail("$p.name", "must be a non-empty string")
+            val handle = o.opt("handle") as? String
+            if (handle == null || !HANDLE.matches(handle)) fail("$p.handle", "must look like @handle")
+            val id = o.opt("id")?.let { it as? String }
+            if (o.has("id") && (id == null || !CHANNEL_ID.matches(id))) fail("$p.id", "must look like UC + 22 characters")
+            Channel(name, handle, id)
+        }
     }
 
     private fun parseAndroid(o: JSONObject, path: String): AndroidRule {

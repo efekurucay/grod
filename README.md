@@ -32,7 +32,9 @@ cd android && ./install.sh
 
 The script installs the app, allows "restricted settings" (sideloaded apps need this before accessibility can be turned on), turns on the grod accessibility service and pushes the rules. Open grod on the phone to check that the service is on and to see the rules revision.
 
-To get rule updates without a cable, put the rules file at an HTTPS URL, for example the raw GitHub URL of `rules/grod.rules.json` in a public repo or a gist. Enter that URL in the app. The app fetches it while you use the target apps, at most every 6 hours, or when you tap Refresh.
+To drop the cable, run `android/wifi.sh` once with the phone plugged in: `grod sync` then reaches it over Wi-Fi until the phone restarts.
+
+To get rule updates away from home, put the rules file at an HTTPS URL, for example the raw GitHub URL of `rules/grod.rules.json` in a public repo or a gist. Enter that URL in the app. The app fetches it while you use the target apps, at most every 6 hours, or when you tap Refresh.
 
 ## Changing what is blocked
 

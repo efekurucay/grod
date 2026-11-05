@@ -21,12 +21,12 @@ class RulesTest {
         assertEquals(listOf("com.google.android.youtube", "app.revanced.android.youtube"), android.packages)
         assertEquals(listOf(Matcher(viewId = "reel_player_page_container"), Matcher(viewId = "reel_watch_player")), android.feed)
         assertEquals(listOf(Matcher(desc = "Shorts")), android.cover)
-        assertEquals(listOf(Matcher(descContains = "play Short")), android.mask)
+        assertTrue(Matcher(descContains = "play Short") in android.mask)
         assertEquals(Action.BACK, android.action)
 
         val igAndroid = set.rules.single { it.id == "instagram-reels" }.android!!
         assertTrue(Matcher(text = "Watch more reels") in igAndroid.cover)
-        assertEquals(listOf(Matcher(descContains = "Reel by ")), igAndroid.mask)
+        assertTrue(Matcher(descContains = "Reel by ") in igAndroid.mask)
 
         val tiktok = set.rules.single { it.id == "tiktok" }.android!!
         assertTrue(tiktok.feed.isEmpty())

@@ -49,8 +49,9 @@ Web (hosts `youtube.com` and subdomains):
 - A watch page whose owner link points to a blocked channel shows the blocked page. The owner appears after the page renders, so it is checked for a few seconds after each navigation.
 
 Android (`com.google.android.youtube`, `app.revanced.android.youtube`), YouTube in English:
-- Nodes whose description contains `Go to channel <name> -` (video tiles) or whose text equals `<name>` (channel cards) get a mask.
-- A watch page (`watch_player` on screen) with a node described `Subscribe to <name>.` or `Unsubscribe from <name>.` gets the `back` action.
+- Nodes whose description contains `Go to channel <name> -` (video tiles), channel cards whose text equals `<name>`, and playlist tiles owned by the channel get a mask.
+- A watch page (`watch_panel`) or channel page (`collapsing_header_container`) of a blocked channel gets the `back` action. `watch_player` alone is not used: it also matches the miniplayer. Owner signals, any of: a node described `Subscribe to <name>.` / `Unsubscribe from <name>.`, the playlist panel `subtitle` equal to `<name>`, the channel page handle, or the title of a masked tile the user just opened (collabs and other people's playlists).
+- When it fires, playback is paused and the miniplayer is closed, retrying with taps on its close control, because YouTube ignores accessibility clicks there and a Premium account would keep playing in the background. If the page is still there, a second Back follows.
 
 Adding a channel:
 - Desktop: the "Block channel" item grod adds to a video's ⋮ menu, or right-click a video or channel link → "grod: Block channel". The extension applies it at once and sends it to the macOS app (`POST /youtube-channels`), which writes it with `grod channel add`.

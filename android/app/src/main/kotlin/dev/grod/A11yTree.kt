@@ -32,6 +32,27 @@ class A11yTree(private val root: AccessibilityNodeInfo) : WindowTree {
     override fun findByText(value: String, visit: (Node) -> Unit) =
         visitAll(root.findAccessibilityNodeInfosByText(value), visit)
 
+    /**
+     * Clicks the first visible node with this id; used to close what a fired rule left running.
+     * Some apps ignore the accessibility click (YouTube's miniplayer close does), so [tap] gets the
+     * node's bounds to tap it like a finger instead. False when no such node is on screen.
+     */
+    fun click(fullId: String, tap: (Box) -> Unit): Boolean {
+        var done = false
+        for (info in root.findAccessibilityNodeInfosByViewId(fullId)) {
+            try {
+                val bounds = if (done) null else visibleBounds(info)
+                if (bounds != null) {
+                    if (!info.performAction(AccessibilityNodeInfo.ACTION_CLICK)) tap(bounds)
+                    done = true
+                }
+            } finally {
+                recycle(info)
+            }
+        }
+        return done
+    }
+
     private fun visitAll(found: List<AccessibilityNodeInfo>, visit: (Node) -> Unit) {
         for (info in found) {
             try {

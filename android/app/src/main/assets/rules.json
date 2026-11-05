@@ -167,7 +167,14 @@
         ],
         "action": "back"
       }
+    },
+    {
+      "id": "youtube-channels",
+      "title": "Blocked YouTube channels",
+      "why": "You blocked this channel. Everything else on YouTube stays.",
+      "enabled": true,
+      "youtubeChannels": []
     }
   ],
-  "revision": "38004435a2d5"
+  "revision": "7c4e95d57738"
 }
