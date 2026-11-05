@@ -4,70 +4,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Blocked · grod</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #f6f5f2;
-        --fg: #22211f;
-        --muted: #6b6862;
-        --button: #22211f;
-        --button-fg: #f6f5f2;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #171716;
-          --fg: #e9e7e2;
-          --muted: #9a968e;
-          --button: #e9e7e2;
-          --button-fg: #171716;
-        }
-      }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: var(--bg);
-        color: var(--fg);
-        font: 16px/1.5 system-ui, -apple-system, sans-serif;
-      }
-      main {
-        max-width: 28rem;
-        padding: 2rem 1.5rem;
-      }
-      .label {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.8rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      h1 {
-        margin: 0.25rem 0 0.75rem;
-        font-size: 1.6rem;
-        font-weight: 600;
-      }
-      #why {
-        margin: 0 0 1.75rem;
-        color: var(--muted);
-      }
-      button {
-        padding: 0.6rem 1.2rem;
-        border: 0;
-        border-radius: 999px;
-        background: var(--button);
-        color: var(--button-fg);
-        font: inherit;
-        cursor: pointer;
-      }
-    </style>
+    <link rel="stylesheet" href="ui/grod.css" />
   </head>
-  <body>
-    <main>
-      <p class="label">grod</p>
-      <h1 id="title">Blocked</h1>
-      <p id="why"></p>
-      <button id="back" type="button">Go back</button>
+  <body class="g-app">
+    <main class="g-interstitial">
+      <div class="g-interstitial__body">
+        <p class="g-interstitial__label">
+          <span class="g-brand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="9" r="5" />
+              <path d="M17 4v11.5a5 5 0 0 1-5 5H9" />
+            </svg>
+            grod
+          </span>
+        </p>
+        <h1 class="g-interstitial__title" id="title">Blocked</h1>
+        <p class="g-interstitial__why" id="why"></p>
+        <button class="g-button" id="back" type="button">Go back</button>
+      </div>
     </main>
     <script src="lib/rules-core.js"></script>
     <script type="module" src="blocked.js"></script>

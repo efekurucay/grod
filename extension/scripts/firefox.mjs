@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
 const out = join(root, 'dist/firefox');
-const files = ['background.js', 'content.js', 'blocked.html', 'blocked.js', 'popup.html', 'popup.js', 'rules.json', 'lib', 'icons'];
+const files = ['background.js', 'content.js', 'blocked.html', 'blocked.js', 'popup.html', 'popup.js', 'rules.json', 'lib', 'icons', 'ui'];
 
 rmSync(out, { recursive: true, force: true });
 for (const f of files) cpSync(join(root, f), join(out, f), { recursive: true });

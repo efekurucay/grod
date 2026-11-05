@@ -22,35 +22,56 @@ if (stored && tab?.url) {
   if (ids.length) text('tab', ids.join(', '));
 }
 
+// One g-row: title, optional muted line under it, optional muted text at the end.
+function row({ title, meta, end, off, tooltip }) {
+  const item = document.createElement('li');
+  item.className = off ? 'g-row g-row--off' : 'g-row';
+  item.title = tooltip;
+  const main = document.createElement('span');
+  main.className = 'g-row__main';
+  const name = document.createElement('span');
+  name.className = 'g-row__title';
+  name.textContent = title;
+  main.append(name);
+  if (meta) {
+    const line = document.createElement('span');
+    line.className = 'g-row__meta';
+    line.textContent = meta;
+    main.append(line);
+  }
+  item.append(main);
+  if (end) {
+    const tail = document.createElement('span');
+    tail.className = 'g-row__end';
+    tail.textContent = end;
+    item.append(tail);
+  }
+  return item;
+}
+
 const list = document.getElementById('rules');
 for (const rule of stored?.file.rules ?? []) {
-  const item = document.createElement('li');
-  item.className = rule.enabled ? '' : 'off';
-  item.title = rule.id;
-  const dot = document.createElement('span');
-  dot.className = 'dot';
-  const title = document.createElement('span');
-  title.className = 'title';
-  title.textContent = rule.enabled ? rule.title : `${rule.title} (off)`;
-  const count = document.createElement('span');
-  count.className = 'count';
-  count.textContent = String(counts[rule.id] ?? 0);
-  item.append(dot, title, count);
-  list.append(item);
+  list.append(
+    row({
+      title: rule.title,
+      meta: rule.enabled ? '' : 'Off',
+      end: String(counts[rule.id] ?? 0),
+      off: !rule.enabled,
+      tooltip: rule.id,
+    }),
+  );
 }
 
 const channels = core.youtubeChannels(stored?.file, pendingChannels);
 document.getElementById('channels-section').hidden = !channels.length;
 for (const channel of channels) {
-  const item = document.createElement('li');
-  item.title = channel.id ?? channel.handle;
-  const name = document.createElement('span');
-  name.className = 'title';
-  name.textContent = channel.name;
-  const handle = document.createElement('span');
-  handle.className = 'count';
-  // Pending: applied here, not yet in the rules file the phone gets.
-  handle.textContent = channel.rule === core.pendingRule ? `${channel.handle} · pending` : channel.handle;
-  item.append(name, handle);
-  document.getElementById('channels').append(item);
+  document.getElementById('channels').append(
+    row({
+      title: channel.name,
+      meta: channel.handle,
+      // Pending: applied here, not yet in the rules file the phone gets.
+      end: channel.rule === core.pendingRule ? 'Pending' : '',
+      tooltip: channel.id ?? channel.handle,
+    }),
+  );
 }

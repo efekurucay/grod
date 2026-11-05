@@ -3,111 +3,48 @@
   <head>
     <meta charset="utf-8" />
     <title>grod</title>
+    <link rel="stylesheet" href="ui/grod.css" />
     <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #f6f5f2;
-        --fg: #22211f;
-        --muted: #6b6862;
-        --line: #dedbd4;
-        --on: #2f7d4f;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #1c1c1b;
-          --fg: #e9e7e2;
-          --muted: #9a968e;
-          --line: #34332f;
-          --on: #6cc08f;
-        }
-      }
       body {
-        width: 320px;
-        margin: 0;
-        padding: 14px 16px;
-        background: var(--bg);
-        color: var(--fg);
-        font: 13px/1.45 system-ui, -apple-system, sans-serif;
+        width: 360px;
+        padding: var(--g-space-16);
       }
-      h1 {
-        margin: 0 0 10px;
-        font-size: 15px;
-        font-weight: 600;
-      }
-      h2 {
-        margin: 14px 0 6px;
-        color: var(--muted);
-        font-size: 11px;
-        font-weight: 500;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      dl {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 2px 12px;
-        margin: 0;
-      }
-      dt {
-        color: var(--muted);
-      }
-      dd {
-        margin: 0;
-        overflow-wrap: anywhere;
-      }
-      code {
-        font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-      ul {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-      li {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        padding: 5px 0;
-        border-top: 1px solid var(--line);
-      }
-      li .title {
-        flex: 1;
-      }
-      li .count {
-        color: var(--muted);
-        font-variant-numeric: tabular-nums;
-      }
-      li.off {
-        color: var(--muted);
-      }
-      .dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--line);
-      }
-      li:not(.off) .dot {
-        background: var(--on);
+      header {
+        margin: 0 0 var(--g-space-16);
+        padding: 0 calc(var(--g-space-12) + 1px);
+        font-size: var(--g-font-size-16);
       }
     </style>
   </head>
-  <body>
-    <h1>grod</h1>
-    <dl>
-      <dt>Revision</dt>
-      <dd><code id="revision">none</code></dd>
-      <dt>Source</dt>
-      <dd id="source">none</dd>
-      <dt>Last fetch</dt>
-      <dd id="fetched">never</dd>
-      <dt>This tab</dt>
-      <dd id="tab">none</dd>
-    </dl>
-    <h2>Rules</h2>
-    <ul id="rules"></ul>
-    <section id="channels-section" hidden>
-      <h2>Blocked channels</h2>
-      <ul id="channels"></ul>
+  <body class="g-app g-app--compact">
+    <header>
+      <span class="g-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="9" r="5" />
+          <path d="M17 4v11.5a5 5 0 0 1-5 5H9" />
+        </svg>
+        grod
+      </span>
+    </header>
+    <section class="g-section">
+      <dl class="g-kv g-section__body g-section__body--padded">
+        <dt>Revision</dt>
+        <dd><code id="revision">none</code></dd>
+        <dt>Source</dt>
+        <dd id="source">none</dd>
+        <dt>Last fetch</dt>
+        <dd id="fetched">never</dd>
+        <dt>This tab</dt>
+        <dd id="tab">none</dd>
+      </dl>
+    </section>
+    <section class="g-section">
+      <h2 class="g-section__title">Rules</h2>
+      <ul class="g-list g-section__body" id="rules"></ul>
+    </section>
+    <section class="g-section" id="channels-section" hidden>
+      <h2 class="g-section__title">Blocked channels</h2>
+      <ul class="g-list g-section__body" id="channels"></ul>
     </section>
     <script src="lib/rules-core.js"></script>
     <script type="module" src="popup.js"></script>

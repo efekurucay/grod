@@ -1,0 +1,320 @@
+/* grod UI components. Rules: color only for state, no badges or shadows, motion is color/opacity only. */
+
+/* Base styles apply only inside .g-app, so grod.css can be added to a page without restyling it. */
+.g-app {
+  margin: 0;
+  background: var(--g-color-background);
+  color: var(--g-color-foreground);
+  font-family: var(--g-font-family-sans);
+  font-size: var(--g-font-size-16);
+  font-weight: var(--g-font-weight-regular);
+  line-height: var(--g-font-leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.g-app--compact {
+  font-size: var(--g-font-size-13);
+}
+
+.g-app,
+.g-app *,
+.g-app *::before,
+.g-app *::after {
+  box-sizing: border-box;
+}
+
+.g-app code {
+  font-family: var(--g-font-family-mono);
+  font-size: 0.92em;
+}
+
+/* Mark + wordmark. The mark is inline SVG drawn in currentColor, so it follows the text color. */
+.g-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: var(--g-font-weight-strong);
+  line-height: var(--g-font-leading-heading);
+}
+
+.g-brand svg {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  /* The bowl's ink starts 5.8 of 24 units in; pull it back so the mark lines up with text below. */
+  margin-inline-start: -0.3em;
+}
+
+/* Button. Variants differ by fill, not by size, so two choices side by side keep equal weight. */
+.g-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--g-space-8);
+  margin: 0;
+  padding: var(--g-space-8) var(--g-space-16);
+  border: 1px solid transparent;
+  border-radius: var(--g-radius-md);
+  background: var(--g-color-primary);
+  color: var(--g-color-primary-foreground);
+  font: inherit;
+  font-weight: var(--g-font-weight-strong);
+  line-height: var(--g-font-leading-heading);
+  cursor: pointer;
+  transition:
+    background-color var(--g-duration-fast) var(--g-easing-out),
+    border-color var(--g-duration-fast) var(--g-easing-out),
+    color var(--g-duration-fast) var(--g-easing-out);
+}
+
+.g-button:hover {
+  background: color-mix(in oklch, var(--g-color-primary), var(--g-color-background) 15%);
+}
+
+.g-button--quiet {
+  border-color: var(--g-color-input);
+  background: var(--g-color-surface);
+  color: var(--g-color-foreground);
+}
+
+.g-button--ghost {
+  background: transparent;
+  color: var(--g-color-foreground);
+}
+
+.g-button--quiet:hover,
+.g-button--ghost:hover {
+  background: var(--g-color-muted);
+}
+
+.g-button:disabled {
+  border-color: transparent;
+  background: var(--g-color-muted);
+  color: var(--g-color-muted-foreground);
+  cursor: default;
+}
+
+/* Switch: <input type="checkbox" role="switch" class="g-switch">. The thumb position also shows
+   the state, so it never depends on color alone. The thumb jumps rather than slides: motion stays color-only. */
+.g-switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--g-color-input);
+  border-radius: var(--g-radius-md);
+  background: var(--g-color-surface);
+  cursor: pointer;
+  transition:
+    background-color var(--g-duration-fast) var(--g-easing-out),
+    border-color var(--g-duration-fast) var(--g-easing-out);
+}
+
+.g-switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--g-radius-sm);
+  background: var(--g-color-input);
+  transition: background-color var(--g-duration-fast) var(--g-easing-out);
+}
+
+.g-switch:checked {
+  border-color: var(--g-color-accent);
+  background: var(--g-color-accent);
+}
+
+.g-switch:checked::before {
+  left: 16px;
+  background: var(--g-color-accent-foreground);
+}
+
+.g-switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.g-button:focus-visible,
+.g-switch:focus-visible,
+.g-input:focus-visible {
+  outline: 2px solid var(--g-color-ring);
+  outline-offset: 2px;
+}
+
+/* List row: title, optional secondary line, optional trailing control or count. */
+.g-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.g-row {
+  display: flex;
+  align-items: center;
+  gap: var(--g-space-12);
+  padding: var(--g-space-8) var(--g-space-12);
+}
+
+.g-row + .g-row {
+  border-top: 1px solid var(--g-color-border);
+}
+
+.g-row__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.g-row__title {
+  overflow-wrap: anywhere;
+}
+
+.g-row__meta {
+  color: var(--g-color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+/* Counts sit here in muted text: shown because the user opened the view, never as a badge. */
+.g-row__end {
+  flex: none;
+  color: var(--g-color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-row--off .g-row__title {
+  color: var(--g-color-muted-foreground);
+}
+
+/* Key–value list: <dl class="g-kv"><dt>…</dt><dd>…</dd></dl>. */
+.g-kv {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--g-space-4) var(--g-space-16);
+  margin: 0;
+}
+
+.g-kv dt {
+  color: var(--g-color-muted-foreground);
+}
+
+.g-kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Field: label, input, hint. */
+.g-field {
+  display: grid;
+  gap: var(--g-space-4);
+}
+
+.g-field__label {
+  font-weight: var(--g-font-weight-strong);
+}
+
+.g-field__hint {
+  margin: 0;
+  color: var(--g-color-muted-foreground);
+}
+
+.g-input {
+  width: 100%;
+  margin: 0;
+  padding: var(--g-space-8) var(--g-space-12);
+  border: 1px solid var(--g-color-input);
+  border-radius: var(--g-radius-md);
+  background: var(--g-color-surface);
+  color: var(--g-color-foreground);
+  font: inherit;
+  line-height: var(--g-font-leading-heading);
+}
+
+.g-input::placeholder {
+  color: var(--g-color-muted-foreground);
+}
+
+/* Section: muted uppercase heading over a surface. The heading is inset to line up with row text. */
+.g-section + .g-section {
+  margin-top: var(--g-space-16);
+}
+
+.g-section__title {
+  margin: 0 0 var(--g-space-8);
+  padding: 0 calc(var(--g-space-12) + 1px);
+  color: var(--g-color-muted-foreground);
+  font-size: var(--g-font-size-12);
+  font-weight: var(--g-font-weight-strong);
+  line-height: var(--g-font-leading-heading);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.g-section__body {
+  margin: 0;
+  border: 1px solid var(--g-color-border);
+  border-radius: var(--g-radius-lg);
+  background: var(--g-color-surface);
+}
+
+.g-section__body--padded {
+  padding: var(--g-space-12);
+}
+
+/* Notice: a static inline message in place of toasts and alerts. Caution pairs its color with a title. */
+.g-notice {
+  margin: 0;
+  padding: var(--g-space-12);
+  border: 1px solid transparent;
+  border-radius: var(--g-radius-md);
+  background: var(--g-color-muted);
+}
+
+.g-notice__title {
+  display: block;
+  font-weight: var(--g-font-weight-strong);
+}
+
+.g-notice--caution {
+  border-color: var(--g-color-caution);
+  background: var(--g-color-surface);
+}
+
+.g-notice--caution .g-notice__title {
+  color: var(--g-color-caution);
+}
+
+/* Interstitial: the blocked-page layout. Label, title, why, one action. */
+.g-interstitial {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--g-space-32) var(--g-space-24);
+}
+
+.g-interstitial__body {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.g-interstitial__label {
+  margin: 0 0 var(--g-space-24);
+  color: var(--g-color-muted-foreground);
+}
+
+.g-interstitial__title {
+  margin: 0 0 var(--g-space-8);
+  font-size: var(--g-font-size-24);
+  font-weight: var(--g-font-weight-strong);
+  line-height: var(--g-font-leading-heading);
+}
+
+.g-interstitial__why {
+  margin: 0 0 var(--g-space-32);
+  color: var(--g-color-muted-foreground);
+}
