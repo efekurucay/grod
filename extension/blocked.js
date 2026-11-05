@@ -2,7 +2,8 @@ const api = globalThis.browser ?? globalThis.chrome;
 const core = globalThis.grodCore;
 const params = new URLSearchParams(location.search);
 const { rules: stored } = await api.storage.local.get('rules');
-const rule = stored?.file.rules.find((r) => r.id === params.get('rule'));
+const ruleId = params.get('rule');
+const rule = stored?.file.rules.find((r) => r.id === ruleId) ?? (ruleId === core.pendingRule.id ? core.pendingRule : null);
 
 if (rule) {
   document.getElementById('title').textContent = rule.title;

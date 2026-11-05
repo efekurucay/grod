@@ -4,13 +4,16 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 
-export type Matcher = { viewId?: string; text?: string; desc?: string; selected?: boolean };
+export type Matcher = { viewId?: string; text?: string; desc?: string; descContains?: string; selected?: boolean };
+
+export type Channel = { name: string; handle: string; id?: string };
 
 export type Rule = {
   id: string;
   title: string;
   why?: string;
   enabled: boolean;
+  youtubeChannels?: Channel[];
   web?: {
     hosts: string[];
     hide?: string[];
@@ -22,6 +25,7 @@ export type Rule = {
     feed?: Matcher[];
     exempt?: Matcher[];
     cover?: Matcher[];
+    mask?: Matcher[];
     action?: 'back' | 'home';
   };
   macos?: { quitApps?: string[] };
@@ -66,7 +70,7 @@ export function validate(data: unknown): string[] {
         errors.push(`${rule.id}: redirect target ${r.to} is blocked by the same rule`);
       }
     }
-    if (!rule.web && !rule.android && !rule.macos) errors.push(`${rule.id}: no platform section`);
+    if (!rule.web && !rule.android && !rule.macos && !rule.youtubeChannels) errors.push(`${rule.id}: no platform section`);
   }
   return errors;
 }
@@ -130,5 +134,7 @@ export function removeRule(file: RulesFile, id: string): void {
 }
 
 export function platforms(rule: Rule): string[] {
-  return (['web', 'android', 'macos'] as const).filter((p) => rule[p]);
+  const list: string[] = (['web', 'android', 'macos'] as const).filter((p) => rule[p]);
+  if (rule.youtubeChannels) list.push(`youtube channels (${rule.youtubeChannels.length})`);
+  return list;
 }

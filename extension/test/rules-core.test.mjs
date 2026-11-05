@@ -93,3 +93,75 @@ test('invalid selectors are skipped and each valid one gets its own CSS rule', (
     'a[href="/reels/"] { display: none !important; }\nnav { display: none !important; }',
   );
 });
+
+const cem = { name: 'Çin Malı Cem Yılmaz', handle: '@ÇinMalıCemYılmaz' };
+const CEM_HREF = '/@%C3%87inMal%C4%B1CemY%C4%B1lmaz';
+const channelFile = {
+  schemaVersion: 1,
+  rules: [
+    { id: 'yt-channels', title: 'Channels', enabled: true, youtubeChannels: [cem, { name: 'X', handle: '@xchan', id: 'UC1234567890123456789012' }] },
+    { id: 'off', title: 'Off', enabled: false, youtubeChannels: [{ name: 'Off', handle: '@offchan' }] },
+  ],
+};
+
+test('channel lists merge from enabled rules plus pending, one entry per handle', () => {
+  const pending = [{ name: 'Dup', handle: '@%C3%A7inmal%C4%B1cemy%C4%B1lmaz' }, { name: 'New', handle: '@new' }, { handle: 'bad' }];
+  const channels = core.youtubeChannels(channelFile, pending);
+  assert.deepEqual(channels.map((c) => [c.handle, c.rule.id]), [
+    ['@ÇinMalıCemYılmaz', 'yt-channels'],
+    ['@xchan', 'yt-channels'],
+    ['@new', core.pendingRule.id],
+  ]);
+  assert.deepEqual(core.youtubeChannels(undefined, []), []);
+});
+
+test('handles compare case-insensitively after percent-decoding', () => {
+  assert.equal(core.handleKey(CEM_HREF.slice(1)), '@çinmalıcemyılmaz');
+  assert.equal(core.handleKey(CEM_HREF.slice(1)), core.handleKey(cem.handle));
+  assert.equal(core.handleKey('@MrBeast'), core.handleKey('@mrbeast'));
+  assert.equal(core.handleKey('@bad%E0'), '@bad%e0');
+  assert.equal(core.handleKey(cem.handle.normalize('NFD')), core.handleKey(cem.handle));
+});
+
+test('channel pages and anything below them are blocked with the owning rule', () => {
+  const channels = core.youtubeChannels(channelFile);
+  for (const path of [CEM_HREF, `${CEM_HREF}/videos`, '/@çinmalıcemyılmaz', '/@ÇinMalıCemYılmaz/shorts', '/channel/UC1234567890123456789012/about']) {
+    assert.equal(core.channelForPath(channels, path)?.rule.id, 'yt-channels', path);
+  }
+  for (const path of ['/@offchan', '/@ÇinMalıCemYılmazz', '/watch', '/', '/channel/UCother', '/results']) {
+    assert.equal(core.channelForPath(channels, path), null, path);
+  }
+});
+
+test('channel selectors cover every tile type with raw and encoded handles and the channel id', () => {
+  const selectors = core.channelSelectors(core.youtubeChannels(channelFile));
+  assert.equal(selectors.length, core.channelTiles.length);
+  assert.ok(core.channelTiles.includes('ytd-video-renderer') && core.channelTiles.includes('ytm-video-with-context-renderer'));
+  const video = selectors.find((s) => s.startsWith('ytd-video-renderer:has('));
+  assert.ok(video.includes(`a[href="${CEM_HREF}" i]`));
+  assert.ok(video.includes(`a[href^="${CEM_HREF}/" i]`));
+  assert.ok(video.includes('a[href="/@ÇinMalıCemYılmaz" i]'));
+  assert.ok(video.includes('a[href="/channel/UC1234567890123456789012"]'));
+  assert.ok(!video.includes('offchan'));
+  assert.deepEqual(core.channelSelectors([]), []);
+  const decomposed = core.channelSelectors([{ ...cem, handle: cem.handle.normalize('NFD') }])[1];
+  assert.ok(decomposed.includes(`a[href="${CEM_HREF}" i]`), decomposed);
+});
+
+test('quotes in a handle cannot break out of the selector string', () => {
+  const [selector] = core.channelSelectors([{ name: 'Q', handle: '@a"b\\c' }]);
+  assert.ok(selector.includes('a[href="/@a\\"b\\\\c" i]'), selector);
+});
+
+test('a tile yields its channel: handle, shortest link text as name, and id', () => {
+  const links = [
+    { href: '/watch?v=abc', text: 'Some video title' },
+    { href: CEM_HREF, text: '' },
+    { href: CEM_HREF, text: '\n  Çin Malı Cem Yılmaz\n ' },
+    { href: 'https://www.youtube.com/channel/UC1234567890123456789012', text: '' },
+    { href: '/@someoneelse', text: 'Other' },
+  ];
+  assert.deepEqual(core.channelFromLinks(links), { ...cem, id: 'UC1234567890123456789012' });
+  assert.deepEqual(core.channelFromLinks([{ href: '/@solo', text: '' }]), { name: 'solo', handle: '@solo' });
+  assert.equal(core.channelFromLinks([{ href: '/watch?v=1', text: 'x' }]), null);
+});

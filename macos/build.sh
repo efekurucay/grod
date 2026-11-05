@@ -25,5 +25,13 @@ cat > "$PLIST" <<'PLIST'
 </dict></plist>
 PLIST
 /usr/libexec/PlistBuddy -c "Add :GrodRulesPath string $REPO_DIR/rules/grod.rules.json" "$PLIST"
+# The app hands rule edits to the grod CLI; launchd gives it no PATH, so the node used at build time is recorded.
+NODE_PATH="$(command -v node || true)"
+if [ -n "$NODE_PATH" ]; then
+  /usr/libexec/PlistBuddy -c "Add :GrodNodePath string $NODE_PATH" "$PLIST"
+  /usr/libexec/PlistBuddy -c "Add :GrodCLIPath string $REPO_DIR/tools/bin/grod.js" "$PLIST"
+else
+  echo "node not found: blocking channels from the browser will be unavailable" >&2
+fi
 codesign --force -s - "$APP"
 printf 'Built %s\n' "$APP"

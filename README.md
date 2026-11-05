@@ -46,14 +46,26 @@ By hand:
 ```sh
 grod list                 # what is blocked where
 grod disable tiktok       # or enable / remove / add rule.json
-grod sync                 # update extension + Android copies, push to a phone on adb
+grod sync                 # push again, e.g. after plugging the phone in
 ```
+
+### Blocking a YouTube channel
+
+A blocked channel's videos disappear from YouTube home, search and recommendations, and its watch and channel pages are blocked.
+
+- **Browser**: open a video's ⋮ menu and choose "grod: Block channel". You can also right-click a video or channel link and choose "grod: Block channel".
+- **Phone**: in YouTube, tap Share on a video or channel and pick grod.
+- **Claude or the terminal**: `grod channel add <video link | channel link | @handle>`. Use `grod channel list` to see blocked channels and `grod channel remove <@handle>` to unblock one.
+
+A channel blocked in the browser goes into the rules through the macOS app. A channel blocked on the phone works on the phone right away and joins the rules at the next `grod sync` with the phone connected.
+
+Nothing needs a rebuild or a reload. Every change made through the CLI or MCP is pushed at once: the macOS app sees it in about 2 seconds, the extension within a minute, and a phone on adb (USB or Wi-Fi) within seconds.
 
 | Platform | Picks up a change |
 |---|---|
 | macOS app | in about 2 s |
 | Extension | within a minute, through the macOS app. Without it: `grod sync` + reload the extension |
-| Android | in about 5 s if `grod sync` pushed it over adb; otherwise at the next URL fetch |
+| Android | in about 5 s when the phone is on adb (USB or Wi-Fi); otherwise at the next `grod sync` or URL fetch |
 
 Each platform shows the rules revision it runs. Compare it with `grod revision`.
 

@@ -7,13 +7,16 @@ if (!exe) throw new Error('Set CHROME to a Chrome for Testing binary.');
 const browser = await puppeteer.launch({
   executablePath: exe, headless: true, pipe: true,
   enableExtensions: [EXT],
-  args: ['--no-first-run', '--lang=en-US'],
+  // Plain-http requests, loopback included, go to a dead proxy: the extension cannot reach a running grod macOS app,
+  // so the channel test below cannot write into the real rules file. YouTube and the others are https and unaffected.
+  args: ['--no-first-run', '--lang=en-US', '--proxy-server=http=127.0.0.1:9', '--proxy-bypass-list=<-loopback>'],
 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const page = await browser.newPage();
 const results = [];
 const check = (name, ok, detail) => results.push(`${ok ? 'PASS' : 'FAIL'} ${name} ${detail ?? ''}`);
 await sleep(1500); // let background store bundled rules
+const extensionId = new URL((await browser.waitForTarget((t) => t.type() === 'service_worker')).url()).host;
 
 // 1. hard load of a Short redirects to watch
 await page.goto('https://www.youtube.com/shorts/aqz-KE-bpKQ?si=abc', { waitUntil: 'domcontentloaded' });
@@ -55,6 +58,36 @@ check('blocked page shows rule', text.includes('Instagram Reels'), JSON.stringif
 await page.goto('https://www.tiktok.com/foryou', { waitUntil: 'domcontentloaded' }).catch(() => {});
 await sleep(3000);
 check('tiktok blocked', page.url().includes('rule=tiktok'), page.url());
+
+// 6. Block a channel from a search result's ⋮ menu (logged out). The macOS app is unreachable here,
+// so this exercises the pending path: the block must apply before any rules file lists the channel.
+const CEM = '/@%C3%87inMal%C4%B1CemY%C4%B1lmaz';
+const cemTiles = `:is(${['ytd-video-renderer', 'ytd-channel-renderer', 'yt-lockup-view-model', 'ytd-rich-item-renderer'].join(',')}):has(a[href="${CEM}"])`;
+const visibleCount = (selector) => page.$$eval(selector, (els) => els.filter((el) => el.getClientRects().length).length);
+// Start with no blocked channels, whatever the bundled rules list.
+await page.goto(`chrome-extension://${extensionId}/popup.html`);
+await page.evaluate(async () => {
+  const { rules } = await chrome.storage.local.get('rules');
+  for (const rule of rules.file.rules) delete rule.youtubeChannels;
+  await chrome.storage.local.set({ rules, pendingChannels: [] });
+});
+await page.goto('https://www.youtube.com/results?search_query=cem+yilmaz', { waitUntil: 'networkidle2' }).catch(() => {});
+await sleep(2000);
+check('channel tiles shown before block', (await visibleCount(cemTiles)) > 0, `${await visibleCount(cemTiles)} tiles`);
+const menuButton = await page.$(`ytd-video-renderer:has(a[href="${CEM}"]) button[aria-label="Action menu"]`);
+await menuButton?.click();
+const item = await page.waitForSelector('.grod-menu-item', { visible: true, timeout: 5000 }).catch(() => null);
+check('Block channel item in ⋮ menu', Boolean(item), item ? await item.evaluate((el) => el.textContent) : 'missing');
+await item?.click();
+await sleep(1500);
+check('blocked channel tiles hidden', (await visibleCount(cemTiles)) === 0, `${await visibleCount(cemTiles)} visible`);
+await page.goto('https://www.youtube.com/@ÇinMalıCemYılmaz', { waitUntil: 'domcontentloaded' }).catch(() => {});
+await sleep(2500);
+check('blocked channel page', page.url().includes('rule=youtube-channels'), page.url());
+const channelText = await page.evaluate(() => document.body.innerText);
+check('blocked page shows channel rule', channelText.includes('Blocked YouTube channels'), JSON.stringify(channelText.slice(0, 120)));
+const pending = await page.evaluate(() => chrome.storage.local.get('pendingChannels').then((s) => s.pendingChannels));
+check('channel kept as pending', pending?.length === 1 && pending[0].handle === '@ÇinMalıCemYılmaz' && pending[0].name === 'Çin Malı Cem Yılmaz', JSON.stringify(pending));
 
 console.log(results.join('\n'));
 await browser.close();

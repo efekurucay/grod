@@ -12,7 +12,11 @@ One extension for Chrome, Chromium-based browsers (Arc, Brave, Edge) and Firefox
 - With the grod macOS app running, the extension reads `http://127.0.0.1:47770/rules.json` at startup and every minute. Changes apply to open tabs without a reload.
 - Without it, run `grod sync` (writes `extension/rules.json`), then reload the extension.
 
-The popup shows the active revision, where it came from (`localhost` or `bundled`), the last fetch, each rule's fire count, and which rules apply to the current tab.
+## Blocking a YouTube channel
+
+Open a video's ⋮ menu → "grod: Block channel", or right-click a video or channel link → "grod: Block channel". The channel's tiles disappear at once and its channel and watch pages show the blocked page. The extension sends it to the macOS app, which adds it to the rules file so the phone gets it on the next sync; until then it stays in the extension as pending and is retried every minute. Removing a channel: `grod channel remove <@handle>`.
+
+The popup shows the active revision, where it came from (`localhost` or `bundled`), the last fetch, each rule's fire count, which rules apply to the current tab, and the blocked channels.
 
 ## Test
 

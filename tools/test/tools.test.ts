@@ -15,6 +15,8 @@ function sandbox(): string {
   return home;
 }
 
+// Tests must never push sandbox rules to a real phone on adb.
+process.env.GROD_ADB = '0';
 process.env.GROD_HOME = sandbox();
 const rules = await import('../src/rules.ts');
 
@@ -57,12 +59,13 @@ test('upsert, save and revision round-trip', () => {
   assert.throws(() => rules.save(invalid), /refusing to save/);
 });
 
-test('MCP server lists its tools and edits rules over stdio', async () => {
+test('MCP server lists its tools and edits rules over stdio', async (t) => {
   const home = sandbox();
   const child = spawn(process.execPath, [join(realRoot, 'tools/bin/grod.js'), 'mcp'], {
     env: { ...process.env, GROD_HOME: home },
     stdio: ['pipe', 'pipe', 'inherit'],
   });
+  t.after(() => child.kill());
   const replies = new Map<number, any>();
   let buffer = '';
   child.stdout.on('data', (chunk) => {
@@ -84,13 +87,12 @@ test('MCP server lists its tools and edits rules over stdio', async () => {
   send({ method: 'notifications/initialized' });
   send({ id: 2, method: 'tools/list' });
   const names = (await reply(2)).result.tools.map((t: { name: string }) => t.name).sort();
-  assert.deepEqual(names, ['get_rule', 'list_rules', 'remove_rule', 'rules_guide', 'set_rule_enabled', 'sync', 'upsert_rule']);
+  assert.deepEqual(names, ['block_youtube_channel', 'get_rule', 'list_rules', 'remove_rule', 'rules_guide', 'set_rule_enabled', 'sync', 'unblock_youtube_channel', 'upsert_rule']);
 
   send({ id: 3, method: 'tools/call', params: { name: 'set_rule_enabled', arguments: { id: 'tiktok', enabled: false } } });
   assert.match((await reply(3)).result.content[0].text, /tiktok disabled/);
   send({ id: 4, method: 'tools/call', params: { name: 'upsert_rule', arguments: { rule: { id: 'Bad', title: '', enabled: true } } } });
   assert.equal((await reply(4)).result.isError, true);
-  child.kill();
 
   const saved = JSON.parse(readFileSync(join(home, 'rules/grod.rules.json'), 'utf8'));
   assert.equal(saved.rules.find((r: { id: string }) => r.id === 'tiktok').enabled, false);

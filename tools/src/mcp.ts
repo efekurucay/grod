@@ -14,7 +14,8 @@ import {
   upsertRule,
   type Rule,
 } from './rules.ts';
-import { sync } from './sync.ts';
+import { addChannel, removeChannel, resolveChannel } from './channels.ts';
+import { deliver, sync } from './sync.ts';
 
 const server = new McpServer({ name: 'grod', version: '1.0.0' });
 
@@ -30,7 +31,6 @@ function tool(fn: () => unknown): Result {
   }
 }
 
-const afterEdit = 'Saved. Call sync to push it to the phone; the macOS app and extension pick it up on their own.';
 
 server.registerTool(
   'rules_guide',
@@ -77,7 +77,7 @@ server.registerTool(
       const file = load();
       const result = upsertRule(file, rule as unknown as Rule);
       save(file);
-      return `${result} ${String(rule.id)}. ${afterEdit}`;
+      return `${result} ${String(rule.id)}. ${deliver()}`;
     }),
 );
 
@@ -89,7 +89,7 @@ server.registerTool(
       const file = load();
       findRule(file, id).enabled = enabled;
       save(file);
-      return `${id} ${enabled ? 'enabled' : 'disabled'}. ${afterEdit}`;
+      return `${id} ${enabled ? 'enabled' : 'disabled'}. ${deliver()}`;
     }),
 );
 
@@ -101,7 +101,44 @@ server.registerTool(
       const file = load();
       removeRule(file, id);
       save(file);
-      return `removed ${id}. ${afterEdit}`;
+      return `removed ${id}. ${deliver()}`;
+    }),
+);
+
+server.registerTool(
+  'block_youtube_channel',
+  {
+    description:
+      'Hide a YouTube channel everywhere (feeds, search, recommendations, its watch and channel pages) on the web and in the Android app. Give a video or channel link or an @handle; the channel is looked up on YouTube.',
+    inputSchema: z.object({ link: z.string().describe('Video link, channel link or @handle') }),
+  },
+  async ({ link }) => {
+    try {
+      const channel = await resolveChannel(link);
+      return tool(() => {
+        const file = load();
+        const added = addChannel(file, channel);
+        if (added) save(file);
+        return `${added ? 'blocked' : 'already blocked'}: ${channel.name} (${channel.handle}). ${deliver()}`;
+      });
+    } catch (e) {
+      return tool(() => {
+        throw e;
+      });
+    }
+  },
+);
+
+server.registerTool(
+  'unblock_youtube_channel',
+  { description: 'Show a blocked YouTube channel again, by @handle or exact name.', inputSchema: z.object({ channel: z.string() }) },
+  ({ channel }) =>
+    tool(() => {
+      const file = load();
+      const removed = removeChannel(file, channel);
+      if (!removed.length) throw new Error(`no blocked channel matches ${channel}`);
+      save(file);
+      return `unblocked ${removed.map((c) => c.name).join(', ')}. ${deliver()}`;
     }),
 );
 

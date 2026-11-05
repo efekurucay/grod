@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ?? Bundle.main.object(forInfoDictionaryKey: "GrodRulesPath") as? String
         guard let path, !path.isEmpty else {
             statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-            statusItem.button?.title = "grod"
+            statusItem.button?.image = Self.mark()
             let menu = NSMenu()
             menu.addItem(withTitle: "Missing GrodRulesPath / GROD_RULES", action: nil, keyEquivalent: "")
             let quit = menu.addItem(withTitle: "Quit", action: #selector(quit), keyEquivalent: "q")
@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         safari = SafariGuard(store: store)
         server = LocalServer(store: store)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "grod"
+        statusItem.button?.image = Self.mark()
         store.changed = { [weak self] in self?.refreshMenu() }
         server.failed = { [weak self] error in self?.report(error) }
         safari.failed = { [weak self] error in self?.report(error) }
@@ -45,6 +45,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         safari.updateTimer()
         refreshMenu()
+    }
+
+    /// brand/grod-mark.svg drawn natively: a template image, so macOS tints it for light and dark menu bars.
+    private static func mark() -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+            let unit = rect.width / 24
+            let center = NSPoint(x: 12 * unit, y: 12 * unit)
+            // Same G as the SVG: an arc open at the upper right, then the bar back toward the center.
+            let g = NSBezierPath()
+            g.appendArc(withCenter: center, radius: 8 * unit, startAngle: 45, endAngle: 360, clockwise: false)
+            g.line(to: NSPoint(x: 12.5 * unit, y: 12 * unit))
+            g.lineWidth = 2.6 * unit
+            g.lineCapStyle = .round
+            g.lineJoinStyle = .round
+            NSColor.black.setStroke()
+            g.stroke()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "grod"
+        return image
     }
 
     private func enforce(_ app: NSRunningApplication) {
