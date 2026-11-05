@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import java.text.DateFormat
+import java.time.ZoneId
 import java.util.Date
 
 /** Status screen: service state, active rules revision and source, rules, and the rules URL. */
@@ -27,6 +28,8 @@ class MainActivity : Activity() {
     private lateinit var syncStatus: TextView
     private lateinit var ruleList: LinearLayout
     private lateinit var channelList: LinearLayout
+    private lateinit var notificationStatus: TextView
+    private lateinit var accessList: LinearLayout
     private lateinit var urlInput: EditText
     private val onStoreChanged: () -> Unit = { render() }
 
@@ -47,6 +50,10 @@ class MainActivity : Activity() {
         column.addView(heading("Rules"))
         syncStatus = text("", 14f).also(column::addView)
         ruleList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also(column::addView)
+
+        column.addView(heading("Notifications"))
+        notificationStatus = text("", 15f).also(column::addView)
+        accessList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also(column::addView)
 
         column.addView(heading("Blocked YouTube channels"))
         column.addView(text("Add one from YouTube: Share → grod.", 14f))
@@ -90,6 +97,7 @@ class MainActivity : Activity() {
             append("Last sync error: ${store.lastError ?: "none"}")
             if (store.rulesUrl != null) append("\nLast URL fetch: ${fetched ?: "never"}")
         }
+        renderNotifications()
         ruleList.removeAllViews()
         for (rule in store.rules.rules) {
             val state = if (rule.enabled) "enabled" else "disabled"
@@ -111,6 +119,38 @@ class MainActivity : Activity() {
             channelList.addView(row)
         }
         if (store.rules.channels.isEmpty()) channelList.addView(text("None", 15f))
+    }
+
+    private fun renderNotifications() {
+        val s = store.rules.notifications
+        val now = System.currentTimeMillis()
+        val time = DateFormat.getTimeInstance(DateFormat.SHORT)
+        notificationStatus.text = when {
+            s == null -> "Not set in the rules."
+            !s.enabled -> "Off in the rules."
+            else -> buildString {
+                val schedule = s.deliverAt?.joinToString(", ") { "%02d:%02d".format(it / 60, it % 60) }
+                append(if (schedule != null) "On: delivers at $schedule\n" else "On: delivers every ${s.deliverEvery} min\n")
+                append("Next delivery: ${time.format(Date(Batching.nextDelivery(now, s.slots, ZoneId.systemDefault())))}\n")
+                append("Held right now: ${Held(this@MainActivity).waiting(now).size}")
+            }
+        }
+        accessList.removeAllViews()
+        val accesses = listOf(
+            Triple("Notification access", Permissions.notificationAccess(this), Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
+            Triple("Do Not Disturb access", Permissions.dndAccess(this), Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
+            Triple("Usage access", Permissions.usageAccess(this), Settings.ACTION_USAGE_ACCESS_SETTINGS),
+        )
+        for ((label, granted, action) in accesses) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(4), 0, 0)
+            }
+            row.addView(text("$label: ${if (granted) "granted" else "missing"}", 15f), LinearLayout.LayoutParams(0, WRAP, 1f))
+            if (!granted) row.addView(button("Grant") { startActivity(Intent(action)) })
+            accessList.addView(row)
+        }
     }
 
     private fun serviceEnabled(): Boolean {

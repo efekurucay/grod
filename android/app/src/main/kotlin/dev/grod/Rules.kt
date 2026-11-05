@@ -51,8 +51,16 @@ data class Rule(
 )
 
 /** Parsed rules plus the channels added on this phone ([localChannels]), which apply on top. */
-data class RuleSet(val revision: String?, val rules: List<Rule>, val localChannels: List<Channel> = emptyList()) {
+data class RuleSet(
+    val revision: String?,
+    val rules: List<Rule>,
+    val localChannels: List<Channel> = emptyList(),
+    val notifications: NotificationSettings? = null,
+) {
     val channels: List<ChannelEntry> = mergeChannels(rules, localChannels)
+
+    /** Days of on-device logs to keep (docs/data.md). */
+    val keepDays: Int get() = notifications?.keepDays ?: NotificationSettings.DEFAULT_KEEP_DAYS
 
     private val active = rules.filter { it.enabled && it.android != null } + channelRules(rules, channels)
 
@@ -79,6 +87,9 @@ object Rules {
     private val ANDROID_KEYS = setOf("packages", "feed", "exempt", "cover", "mask", "action")
     private val MATCHER_KEYS = setOf("viewId", "text", "desc", "descContains", "selected")
     private val CHANNEL_KEYS = setOf("name", "handle", "id")
+    private val NOTIFICATION_KEYS = setOf("enabled", "deliverEvery", "deliverAt", "allow", "keepDays")
+    private val CLOCK = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
+    private val ALLOW_KEYS = setOf("package", "category", "titleContains")
     private val HANDLE = Regex("^@[^\\s/?#]+$")
     private val CHANNEL_ID = Regex("^UC[A-Za-z0-9_-]{22}$")
 
@@ -100,7 +111,45 @@ object Rules {
             if (!seen.add(rule.id)) fail(path, "duplicate id \"${rule.id}\"")
             rule
         }
-        return RuleSet(revision, rules)
+        val notifications = root.opt("notifications")?.let { parseNotifications(it, "notifications") }
+        return RuleSet(revision, rules, notifications = notifications)
+    }
+
+    private fun parseNotifications(raw: Any, path: String): NotificationSettings {
+        val o = raw as? JSONObject ?: fail(path, "must be an object")
+        unknownKey(o, NOTIFICATION_KEYS)?.let { fail("$path.$it", "unknown field") }
+        val enabled = o.opt("enabled") as? Boolean ?: fail("$path.enabled", "must be a boolean")
+        val every = int(o.opt("deliverEvery"), "$path.deliverEvery", 15..720)
+        val keepDays = o.opt("keepDays")?.let { int(it, "$path.keepDays", 0..365) } ?: NotificationSettings.DEFAULT_KEEP_DAYS
+        val allowRaw = o.opt("allow") ?: JSONArray()
+        val allow = allowRaw as? JSONArray ?: fail("$path.allow", "must be an array")
+        val entries = (0 until allow.length()).map { i ->
+            val p = "$path.allow[$i]"
+            val a = allow.opt(i) as? JSONObject ?: fail(p, "must be an object")
+            unknownKey(a, ALLOW_KEYS)?.let { fail("$p.$it", "unknown field") }
+            if (a.length() == 0) fail(p, "needs at least one field")
+            fun str(k: String) = a.opt(k)?.let { it as? String ?: fail("$p.$k", "must be a string") }
+            val title = str("titleContains")
+            if (title == "") fail("$p.titleContains", "must not be empty")
+            NotificationAllow(str("package"), str("category"), title)
+        }
+        val deliverAt = o.opt("deliverAt")?.let { raw ->
+            val arr = raw as? JSONArray ?: fail("$path.deliverAt", "must be an array")
+            if (arr.length() == 0) fail("$path.deliverAt", "must not be empty")
+            (0 until arr.length()).map { i ->
+                val t = arr.opt(i) as? String
+                if (t == null || !CLOCK.matches(t)) fail("$path.deliverAt[$i]", "must look like HH:MM")
+                t.substring(0, 2).toInt() * 60 + t.substring(3).toInt()
+            }.distinct().sorted()
+        }
+        return NotificationSettings(enabled, every, entries, keepDays, deliverAt)
+    }
+
+    private fun int(raw: Any?, path: String, range: IntRange): Int {
+        val n = raw as? Number ?: fail(path, "must be an integer")
+        val v = n.toDouble()
+        if (v != Math.floor(v) || v < range.first || v > range.last) fail(path, "must be an integer in ${range.first}..${range.last}")
+        return v.toInt()
     }
 
     private fun parseRule(o: JSONObject, path: String): Rule {

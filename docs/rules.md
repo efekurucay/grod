@@ -71,7 +71,7 @@ While it is enabled:
   - ongoing and foreground-service notifications;
   - grod's own notifications.
 - **History:** every notification grod sees is logged on the device (docs/data.md), held or not, and so is its removal. A message deleted for everyone still shows in the history. Logs older than `keepDays` are deleted.
-- **Turning it off:** this restores the user's own Do Not Disturb state and releases every held notification at once.
+- **Turning it off:** this restores the user's own Do Not Disturb state and stops holding new notifications. Ones already held still arrive at the time they were given, at most one interval later, because Android 10 cannot change the time of a notification that is already snoozed.
 
 ## macOS
 

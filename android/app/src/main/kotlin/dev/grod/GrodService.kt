@@ -136,6 +136,8 @@ class GrodService : AccessibilityService() {
 
     private fun fire(rule: Rule, pkg: String) {
         store.countFire(rule.countAs)
+        val action = rule.android!!.action.name.lowercase()
+        LogWriter.get(this).append("events", LogLines.event(System.currentTimeMillis(), rule.countAs, pkg, action), rules.keepDays)
         // Engine fires a rule at most once per cooldown window, so this shows one toast per action.
         val message = listOfNotNull(rule.title, rule.why).joinToString(" — ")
         Toast.makeText(this, "grod: $message", Toast.LENGTH_SHORT).show()

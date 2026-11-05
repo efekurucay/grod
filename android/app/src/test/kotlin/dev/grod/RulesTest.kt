@@ -34,6 +34,9 @@ class RulesTest {
         assertEquals(Action.HOME, tiktok.action)
 
         assertNull(set.rules.single { it.id == "facebook-reels" }.android)
+        val n = set.notifications!!
+        assertTrue(n.deliverEvery in 15..720)
+        assertTrue(NotificationAllow(null, "event", null) in n.allow)
         assertTrue("com.instagram.android" in set.targetPackages)
         assertTrue(set.rulesFor("com.android.chrome").isEmpty())
     }
@@ -82,6 +85,14 @@ class RulesTest {
             "empty descContains" to withAndroid("""{"packages":["p"],"mask":[{"descContains":""}]}"""),
             "descContains not string" to withAndroid("""{"packages":["p"],"mask":[{"descContains":1}]}"""),
             "mask not array" to withAndroid("""{"packages":["p"],"mask":{"descContains":"x"}}"""),
+            "notifications every too small" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":10}}""",
+            "notifications every fraction" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60.5}}""",
+            "notifications no enabled" to """{"schemaVersion":1,"rules":[],"notifications":{"deliverEvery":60}}""",
+            "notifications keepDays" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"keepDays":-1}}""",
+            "notifications empty allow" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"allow":[{}]}}""",
+            "notifications allow field" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"allow":[{"app":"x"}]}}""",
+            "notifications deliverAt" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"deliverAt":["9:00"]}}""",
+            "notifications deliverAt empty" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60,"deliverAt":[]}}""",
             "matchers not array" to withAndroid("""{"packages":["p"],"feed":{"viewId":"x"}}"""),
         )
         for ((name, json) in bad) {
@@ -92,5 +103,19 @@ class RulesTest {
                 assertTrue(name, expected.message!!.isNotEmpty())
             }
         }
+    }
+
+    @Test
+    fun parsesNotificationSettings() {
+        val set = Rules.parse(
+            """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":120,
+               "deliverAt":["18:00","09:00","13:30"],"allow":[{"package":"com.whatsapp","titleContains":"Annem"}]}}""",
+        )
+        val n = set.notifications!!
+        assertEquals(listOf(9 * 60, 13 * 60 + 30, 18 * 60), n.slots)
+        assertEquals(30, n.keepDays)
+        assertEquals(listOf(NotificationAllow("com.whatsapp", null, "Annem")), n.allow)
+        assertEquals(30, Rules.parse("""{"schemaVersion":1,"rules":[]}""").keepDays)
+        assertEquals((0 until 1440 step 120).toList(), n.copy(deliverAt = null).slots)
     }
 }

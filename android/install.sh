@@ -54,6 +54,18 @@ done
 echo "    restarted YouTube so it reads the accessibility state again"
 adb shell settings put secure accessibility_enabled 1
 
+say "Granting notification access, Do Not Disturb access and usage access"
+grant() {
+  if out="$(adb shell "$@" 2>&1)" && ! printf '%s' "$out" | grep -qi -e error -e exception -e unknown; then
+    echo "    ok: $*"
+  else
+    echo "    failed: $* (${out//$'\n'/ })"
+  fi
+}
+grant cmd notification allow_listener "$PKG/$PKG.NotificationService"
+grant cmd notification allow_dnd "$PKG"
+grant appops set "$PKG" GET_USAGE_STATS allow
+
 say "Pushing rules"
 if command -v node >/dev/null && [ -f ../tools/bin/grod.js ]; then
   node ../tools/bin/grod.js sync
