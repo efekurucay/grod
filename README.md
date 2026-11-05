@@ -1,87 +1,136 @@
-# grod — get rid of distracting
+<p align="center"><img src="brand/grod-icon.svg" width="96" alt="grod"></p>
 
-grod removes the endless short-video feeds and leaves the rest of each app alone. Instagram stories, posts and DMs stay; Reels go. YouTube videos and search stay; Shorts go. A Short or a reel someone sends you still plays once. Scrolling on to the next one is what grod stops.
+<h1 align="center">grod</h1>
 
-It runs on Android, in Chrome and Firefox, and on macOS, from one rules file. To change what is blocked, tell Claude Code what is distracting you. It edits the rules through the grod MCP server, and every platform picks up the change.
+<p align="center"><b>get rid of distracting</b><br>Removes Reels, Shorts and other endless feeds. Keeps the rest of the app.</p>
 
-| Surface | What it does |
-|---|---|
-| **Android** (`android/`) | Covers the Reels and Shorts tabs so they cannot be tapped. If you reach the feed anyway (a link, Explore), it presses Back. TikTok goes to the home screen. |
-| **Browser** (`extension/`) | Hides Shorts shelves and Reels links, turns `/shorts/ID` into a normal video page, and blocks `/reels/`, Facebook `/reel/` and TikTok. |
-| **macOS** (`macos/`) | Menubar app. It hands fresh rules to the extension, applies the same web rules in Safari, and quits native apps that are all feed. |
-| **Agent** (`tools/`) | `grod` CLI plus an MCP server: list, edit, validate and sync rules. |
+---
 
-Why this design: [research/distraction-science.md](research/distraction-science.md). Removing the feature works better, and gets uninstalled less, than blocking the whole app or showing a screen-time dashboard.
+Blocking Instagram outright also blocks your friends' stories and your DMs, so the blocker gets turned off by Friday. grod takes out only the part that eats the evening: the infinite short-video feed. The rest of the app keeps working.
 
-## Setup
+| App | Gone | Still there |
+|---|---|---|
+| Instagram | Reels tab, Reels feed, reels in Explore | Stories, posts, DMs, search, a reel a friend sends you (plays once) |
+| YouTube | Shorts tab, Shorts shelves, Shorts player | Home, search, subscriptions, normal videos (a Short opens as a normal video on the web) |
+| TikTok | Everything (the whole app is the feed) | — |
+| Facebook (web) | Reels | Posts, groups, Messenger |
+| Snapchat | Spotlight | Chats, Stories |
+| Any YouTube channel you choose | Its videos everywhere: home, search, recommendations | Every other channel |
 
-Requirements: Node 22.18+, Xcode command line tools (macOS app), JDK 17 and the Android SDK (Android app), adb.
+One item is fine. **Swiping on to the next one is what grod stops.**
 
-```sh
-cd tools && npm install && npm link    # puts `grod` on PATH
-cd ../macos && ./install.sh            # menubar app, starts at login
+It runs on **Android**, in **Chromium browsers** (Chrome, Comet, Arc, Brave, Edge) and on **macOS**. It is driven by one rules file, and you change that file by telling an AI agent what distracts you.
+
+## Why it works this way
+
+- Removing a feed beats blocking the app or showing a screen-time dashboard. Taking the Facebook newsfeed out cut time on Facebook by 39–64% ([Purohit et al., CHI 2023](https://doi.org/10.1145/3544548.3581187); [Lyngs et al., CHI 2020](https://arxiv.org/abs/2001.04180)). Changing the interface raised people's sense of control, while usage dashboards did not ([Zhang et al., CHI 2022](https://doi.org/10.1145/3491102.3517722)).
+- The harm comes from fast switching between short clips. In one study, only short-form video hurt people's memory for planned tasks ([Chiossi et al., CHI 2023](https://doi.org/10.1145/3544548.3580778)).
+- A blocker that tells you what it did keeps being used. When interventions change without explanation, uninstalls nearly double ([Kovacs et al., CSCW 2018](https://doi.org/10.1145/3274364)). grod always says which rule acted and what stays usable.
+
+[research/distraction-science.md](research/distraction-science.md) has the full reading list.
+
+## How it works
+
+```
+                 rules/grod.rules.json   one file, every platform
+                           │
+        grod CLI + MCP server: validate · save · push
+      ┌────────────────────┼──────────────────────────┐
+  macOS menu bar app    browser extension         Android app
+  serves the rules      hides shelves and tabs,   accessibility service:
+  on localhost          redirects Shorts,         covers the Reels/Shorts tab,
+                        blocks feed pages         leaves the feed with Back
 ```
 
-**Browser.** Open `chrome://extensions`, turn on Developer mode, choose Load unpacked, and pick `extension/`. For Firefox, see [extension/README.md](extension/README.md).
+- **Android:** an accessibility service watches only the apps listed in the rules. It recognizes screens by view ids and labels, puts an overlay over the Reels and Shorts tabs that swallows taps, and masks feed thumbnails while letting the page scroll. It leaves a feed with Back.
+- **Browser:** a Manifest V3 extension with CSS hiding, redirects and blocked pages. It handles YouTube's and Instagram's in-page navigation.
+- **macOS:** a small menu bar app that serves the current rules to the extension, so it updates without a reload.
+- **Agent:** the `grod` CLI and an MCP server. The rules are validated against a JSON Schema before every save.
 
-**Android.** Turn on USB debugging, connect the phone, then:
+Details: [docs/architecture.md](docs/architecture.md) and [docs/rules.md](docs/rules.md).
+
+## Install
+
+You need Node 22.18+, and adb for Android. To build the apps yourself you also need Xcode command line tools (macOS) and JDK 17 + the Android SDK (Android).
+
+```sh
+git clone https://github.com/efekurucay/grod && cd grod
+cd tools && npm install && npm link && cd ..   # the grod command
+cd macos && ./install.sh && cd ..              # menu bar app, starts at login
+```
+
+**Browser:** open `chrome://extensions`, turn on Developer mode, click Load unpacked and pick the `extension/` folder. This works the same way in Comet, Arc, Brave and Edge.
+
+**Android:** turn on USB debugging, plug the phone in, then run:
 
 ```sh
 cd android && ./install.sh
 ```
 
-The script installs the app, allows "restricted settings" (sideloaded apps need this before accessibility can be turned on), turns on the grod accessibility service and pushes the rules. Open grod on the phone to check that the service is on and to see the rules revision.
+The script builds and installs the app and switches its accessibility service on, including the "restricted settings" step Android 13+ requires for sideloaded apps. It then pushes the rules. To lose the cable afterwards, run `./wifi.sh` once.
 
-To drop the cable, run `android/wifi.sh` once with the phone plugged in: `grod sync` then reaches it over Wi-Fi until the phone restarts.
+## Tell it what distracts you
 
-To get rule updates away from home, put the rules file at an HTTPS URL, for example the raw GitHub URL of `rules/grod.rules.json` in a public repo or a gist. Enter that URL in the app. The app fetches it while you use the target apps, at most every 6 hours, or when you tap Refresh.
+Open this repo in [Claude Code](https://claude.com/claude-code). The `grod` MCP server is already configured in `.mcp.json`. Then just say what distracts you:
 
-## Changing what is blocked
+> "X's Explore page has been pulling me in lately, block it."
+> "Reels are back on my phone."
+> "Block this channel: https://youtu.be/…"
 
-In this repo, tell Claude Code what distracts you, for example "X's Explore page has been distracting me, block it". The `grod-block` skill and the `grod` MCP server (`.mcp.json`) do the rest:
-1. Find stable hooks: selectors or Android view ids.
-2. Write and validate the rule.
-3. Sync it.
+The `grod-block` skill finds stable hooks: CSS selectors on the web, view ids on Android (taken from a screen dump while the phone is on adb). It writes and validates the rule and pushes it out. **Nothing needs a rebuild or a reload.** The macOS app picks up a change in about 2 seconds, the extension within a minute, and a phone on adb (USB or Wi-Fi) within seconds.
 
 By hand:
 
 ```sh
-grod list                 # what is blocked where
-grod disable tiktok       # or enable / remove / add rule.json
-grod sync                 # push again, e.g. after plugging the phone in
+grod list                       # what is blocked where
+grod disable tiktok             # enable / disable / remove / add rule.json
+grod channel add @somechannel   # or a video or channel link
+grod channel list
+grod sync                       # push again, e.g. after plugging the phone in
 ```
 
 ### Blocking a YouTube channel
 
-A blocked channel's videos disappear from YouTube home, search and recommendations, and its watch and channel pages are blocked.
+- **Browser:** a video's ⋮ menu → *grod: Block channel*, or right-click a video or channel link.
+- **Phone:** YouTube → Share → *grod: block channel*.
+- **Agent or terminal:** `grod channel add <link | @handle>`.
 
-- **Browser**: open a video's ⋮ menu and choose "grod: Block channel". You can also right-click a video or channel link and choose "grod: Block channel".
-- **Phone**: in YouTube, tap Share on a video or channel and pick grod.
-- **Claude or the terminal**: `grod channel add <video link | channel link | @handle>`. Use `grod channel list` to see blocked channels and `grod channel remove <@handle>` to unblock one.
+The channel's videos disappear from home, search and recommendations. If one is opened anyway, grod stops it and leaves the page.
 
-A channel blocked in the browser goes into the rules through the macOS app. A channel blocked on the phone works on the phone right away and joins the rules at the next `grod sync` with the phone connected.
+## Privacy
 
-Nothing needs a rebuild or a reload. Every change made through the CLI or MCP is pushed at once: the macOS app sees it in about 2 seconds, the extension within a minute, and a phone on adb (USB or Wi-Fi) within seconds.
+- Nothing leaves your devices. There are no accounts, no analytics and no server.
+- The Android service acts only inside the apps named in the rules. While one of its overlays is on screen, it also listens to other apps, but only to notice that you left so it can remove the overlay. It matches view ids and the labels a rule names (for YouTube channels, the tile descriptions). It does not store or send anything it sees.
+- Network use:
+  - The extension talks only to `127.0.0.1`.
+  - The Android app goes online only for an optional rules URL you set yourself, and for resolving a channel you share to it (YouTube oEmbed).
+- Each platform keeps only a count of how often each rule acted, on the device.
 
-| Platform | Picks up a change |
+## Limits
+
+- Apps rename views and sites change their markup, so rules need upkeep. When something slips through, tell the agent. [research/](research/) records where each selector and id came from.
+- The Android YouTube rules match English UI labels.
+- There is no iOS version and no Play Store build. The app is installed with adb.
+- Tested on one Android 10 phone (EMUI 12) with Instagram 453 and YouTube 21.43, and in Chrome 157.
+
+## Repository
+
+| Path | What |
 |---|---|
-| macOS app | in about 2 s |
-| Extension | within a minute, through the macOS app. Without it: `grod sync` + reload the extension |
-| Android | in about 5 s when the phone is on adb (USB or Wi-Fi); otherwise at the next `grod sync` or URL fetch |
+| `rules/` | The rules file and its JSON Schema |
+| `tools/` | `grod` CLI and MCP server (TypeScript, runs on Node directly) |
+| `extension/` | Browser extension (plain JS) with unit and real-browser tests |
+| `android/` | Kotlin app, no runtime dependencies (≈0.9 MB) |
+| `macos/` | Swift menu bar app |
+| `ui/` | grod UI: calm tokens and components |
+| `research/` | Evidence and selector sources |
+| `docs/` | Architecture and rule behavior |
 
-Each platform shows the rules revision it runs. Compare it with `grod revision`.
-
-How a rule works on each platform: [docs/rules.md](docs/rules.md). How the parts connect: [docs/architecture.md](docs/architecture.md).
-
-## Checks
+Checks:
 
 ```sh
 cd tools && npm test && npx tsc --noEmit
-cd extension && npm test            # npm run e2e for a real-browser run, see extension/README.md
+cd extension && npm test        # npm run e2e runs a real Chrome, see extension/README.md
 cd macos && swift test
 cd android && ./gradlew testDebugUnitTest assembleDebug
 ```
-
-## When a rule stops working
-
-Apps rename their views and sites change their markup. When something slips through, tell Claude Code ("Reels are back on my phone"). For Android, keep the phone on adb with the feed open, so it can dump the screen and update the view ids. [research/](research/) lists where the current selectors and ids came from.
