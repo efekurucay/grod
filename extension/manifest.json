@@ -3,16 +3,25 @@
   "name": "grod",
   "version": "0.1.0",
   "description": "Get rid of distracting: hides short-video feeds and keeps the rest of each site.",
-  "permissions": ["storage", "alarms"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
-    "service_worker": "background.js",
-    "scripts": ["lib/rules-core.js", "background.js"]
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["lib/rules-core.js", "content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "lib/rules-core.js",
+        "content.js"
+      ],
       "run_at": "document_start",
       "all_frames": false
     }
@@ -25,7 +34,11 @@
     "gecko": {
       "id": "grod@grod.local",
       "strict_min_version": "121.0",
-      "data_collection_permissions": { "required": ["none"] }
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   }
 }

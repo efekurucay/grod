@@ -5,7 +5,7 @@ One extension for Chrome, Chromium-based browsers (Arc, Brave, Edge) and Firefox
 ## Load
 
 - **Chrome / Arc / Brave**: `chrome://extensions` → turn on Developer mode → Load unpacked → pick this `extension/` folder.
-- **Firefox (121+)**: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → pick `extension/manifest.json`. Temporary add-ons are removed when Firefox quits. If pages are not affected, open the add-on's Permissions tab in `about:addons` and allow access to all websites.
+- **Firefox (121+)**: run `npm run firefox`, then `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → pick `extension/dist/firefox/manifest.json`. Firefox needs its own manifest because it runs the background as a script page, while Chrome only accepts a service worker. Temporary add-ons are removed when Firefox quits. If pages are not affected, open the add-on's Permissions tab in `about:addons` and allow access to all websites.
 
 ## Rules updates
 

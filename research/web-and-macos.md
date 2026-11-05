@@ -36,7 +36,7 @@ TikTok: whole site is short-form, block the host.
 
 - Static stylesheet injected at `document_start`. CSS `:has()` re-matches new DOM on its own, so there is no per-mutation JS cost.
 - SPA navigation: the content script hooks `navigation` `currententrychange`, `popstate` and YouTube's `yt-navigate-finish`. `declarativeNetRequest` only sees real network loads, not `pushState`.
-- One manifest for both browsers: `background.scripts` (Firefox) plus `background.service_worker` (Chrome), and `browser_specific_settings.gecko`.
+- Separate manifests: Chrome warns on `background.scripts`, Firefox has no extension service worker. `manifest.json` is Chrome's; `npm run firefox` writes `dist/firefox/` with `background.scripts` and `browser_specific_settings.gecko`.
 - Hidden `<video>` keeps playing. Pause videos inside hidden regions in JS.
 
 ## macOS options, lightest first (no paid Apple account)

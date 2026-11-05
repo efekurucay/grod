@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node --test",
     "check": "node -e \"for (const f of ['manifest.json', 'rules.json']) JSON.parse(require('node:fs').readFileSync(f, 'utf8'))\"",
-    "e2e": "node e2e/run.mjs"
+    "e2e": "node e2e/run.mjs",
+    "firefox": "node scripts/firefox.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^24.43.1"
