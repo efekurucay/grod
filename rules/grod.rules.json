@@ -1,0 +1,156 @@
+{
+  "$schema": "./grod.rules.schema.json",
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "youtube-shorts",
+      "title": "YouTube Shorts",
+      "why": "Shorts is an endless feed. Search, subscriptions and normal videos stay.",
+      "enabled": true,
+      "web": {
+        "hosts": [
+          "youtube.com"
+        ],
+        "hide": [
+          "ytd-rich-section-renderer:has(a[href^=\"/shorts/\"])",
+          "ytd-rich-shelf-renderer[is-shorts]",
+          "ytd-reel-shelf-renderer",
+          "ytd-guide-entry-renderer:has(a[title=\"Shorts\"])",
+          "ytd-mini-guide-entry-renderer:has(a[title=\"Shorts\"])",
+          "ytd-video-renderer:has(a[href^=\"/shorts/\"])",
+          "grid-shelf-view-model:has(a[href^=\"/shorts/\"])",
+          "ytd-notification-renderer:has(> a[href^=\"/shorts/\"])",
+          "yt-tab-shape[tab-title=\"Shorts\"]",
+          "ytm-pivot-bar-item-renderer:has(.pivot-shorts)",
+          "ytm-reel-shelf-renderer",
+          "grid-shelf-view-model:has(ytm-shorts-lockup-view-model)",
+          "ytm-video-with-context-renderer:has(.big-shorts-singleton)"
+        ],
+        "redirect": [
+          {
+            "from": "^/shorts/([A-Za-z0-9_-]+).*",
+            "to": "/watch?v=$1"
+          }
+        ]
+      },
+      "android": {
+        "packages": [
+          "com.google.android.youtube",
+          "app.revanced.android.youtube"
+        ],
+        "feed": [
+          {
+            "viewId": "reel_player_page_container"
+          },
+          {
+            "viewId": "reel_watch_player"
+          }
+        ],
+        "cover": [
+          {
+            "desc": "Shorts"
+          }
+        ],
+        "action": "back"
+      }
+    },
+    {
+      "id": "instagram-reels",
+      "title": "Instagram Reels",
+      "why": "Reels is an endless feed. Stories, posts and DMs stay; a reel someone sends you plays once.",
+      "enabled": true,
+      "web": {
+        "hosts": [
+          "instagram.com"
+        ],
+        "hide": [
+          "a[href=\"/reels/\"]",
+          "main[role=\"main\"]:has([data-virtualized] video)"
+        ],
+        "block": [
+          "^/reels(/|\\?|$)"
+        ]
+      },
+      "android": {
+        "packages": [
+          "com.instagram.android"
+        ],
+        "feed": [
+          {
+            "viewId": "clips_viewer_view_pager"
+          }
+        ],
+        "exempt": [
+          {
+            "viewId": "reply_bar_container"
+          },
+          {
+            "viewId": "reel_viewer_message_composer"
+          }
+        ],
+        "cover": [
+          {
+            "viewId": "clips_tab"
+          }
+        ],
+        "action": "back"
+      }
+    },
+    {
+      "id": "tiktok",
+      "title": "TikTok",
+      "why": "The whole app is the feed, so the whole app goes.",
+      "enabled": true,
+      "web": {
+        "hosts": [
+          "tiktok.com"
+        ],
+        "block": [
+          "^/"
+        ]
+      },
+      "android": {
+        "packages": [
+          "com.zhiliaoapp.musically",
+          "com.ss.android.ugc.trill"
+        ],
+        "action": "home"
+      }
+    },
+    {
+      "id": "facebook-reels",
+      "title": "Facebook Reels",
+      "why": "Reels is an endless feed. Posts, groups and Messenger stay.",
+      "enabled": true,
+      "web": {
+        "hosts": [
+          "facebook.com"
+        ],
+        "hide": [
+          "a[href=\"/reel/\"]",
+          "a[href^=\"/reel/\"][href$=\"see_more\"]"
+        ],
+        "block": [
+          "^/reel/"
+        ]
+      }
+    },
+    {
+      "id": "snapchat-spotlight",
+      "title": "Snapchat Spotlight",
+      "why": "Spotlight is an endless feed. Chats and Stories stay.",
+      "enabled": true,
+      "android": {
+        "packages": [
+          "com.snapchat.android"
+        ],
+        "feed": [
+          {
+            "viewId": "spotlight_container"
+          }
+        ],
+        "action": "back"
+      }
+    }
+  ]
+}

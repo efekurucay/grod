@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "grod": {
+      "command": "node",
+      "args": ["tools/bin/grod.js", "mcp"]
+    }
+  }
+}

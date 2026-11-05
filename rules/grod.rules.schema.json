@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grod.local/grod.rules.schema.json",
+  "title": "grod rules",
+  "description": "One file, every platform. Each rule removes one distraction; a missing platform section means the rule does nothing there.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "rules"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "enabled"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "why": {
+          "type": "string",
+          "description": "Shown when the rule fires. Say what stays usable."
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "web": {
+          "$ref": "#/$defs/web"
+        },
+        "android": {
+          "$ref": "#/$defs/android"
+        },
+        "macos": {
+          "$ref": "#/$defs/macos"
+        }
+      }
+    },
+    "web": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hosts"
+      ],
+      "properties": {
+        "hosts": {
+          "description": "Hostnames. A host also matches its subdomains (youtube.com matches m.youtube.com).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9.-]+$"
+          }
+        },
+        "hide": {
+          "description": "Plain CSS selectors (no uBlock extensions) hidden with display:none. Videos inside are paused.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "redirect": {
+          "description": "Applied first. Path+query regex (JS syntax) to a replacement using $1..$9.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string",
+                "pattern": "^/"
+              }
+            }
+          }
+        },
+        "block": {
+          "description": "Path regexes (JS syntax) checked after redirect. A match shows the grod blocked page. Use \"^/\" to block the whole host.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "matcher": {
+      "description": "Every field present must match one accessibility node. viewId is the id without the package prefix. text and desc are exact, case-insensitive.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "viewId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "boolean"
+        }
+      }
+    },
+    "android": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packages"
+      ],
+      "properties": {
+        "packages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "feed": {
+          "description": "Any matcher found on screen means the user is inside the feed; grod runs the action. Missing or empty: the whole app is the feed.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/matcher"
+          }
+        },
+        "exempt": {
+          "description": "Any matcher found on screen holds the action (e.g. one reel opened from a DM) until the user scrolls the feed.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/matcher"
+          }
+        },
+        "cover": {
+          "description": "Nodes covered with an opaque overlay that swallows taps (e.g. the Reels tab button).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/matcher"
+          }
+        },
+        "action": {
+          "description": "back: press Back, then Home if still in the feed. home: go straight to the launcher; use when the whole app is the feed.",
+          "enum": [
+            "back",
+            "home"
+          ],
+          "default": "back"
+        }
+      }
+    },
+    "macos": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "quitApps": {
+          "description": "Bundle ids quit when they launch or come to the front. Only for apps that are all feed.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
