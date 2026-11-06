@@ -107,7 +107,7 @@ class GrodService : AccessibilityService() {
             val scroll = if (
                 event?.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && event.packageName?.toString() == pkg
             ) {
-                Scroll(event.source?.let(::boundsOf))
+                Scroll(event.source?.let(::boundsOf), event.toIndex)
             } else {
                 null
             }

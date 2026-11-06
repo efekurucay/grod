@@ -1,7 +1,10 @@
 package dev.grod
 
-/** A TYPE_VIEW_SCROLLED event; [source] is null when the app reported no source node. */
-class Scroll(val source: Box?)
+/**
+ * A TYPE_VIEW_SCROLLED event; [source] is null when the app reported no source node. [index] is the
+ * event's toIndex (a pager's current item), -1 when the app reported none.
+ */
+class Scroll(val source: Box?, val index: Int = -1)
 
 /**
  * What one event asks the service to do: overlays to show and rules whose action fires now.
@@ -22,6 +25,12 @@ class Engine(
 
     /** Rules whose feed got a scroll while exempt; the exemption ends until the feed leaves the screen. */
     private val scrolledInFeed = HashSet<String>()
+
+    /**
+     * Per rule, the item index of the first feed scroll while on the feed. A pager reports a scroll when
+     * it settles on the item it opened with; only a different index means the user swiped on.
+     */
+    private val openedIndex = HashMap<String, Int>()
 
     /** Per [AndroidRule.followTiles] rule: titles of its masked tiles seen lately, oldest first. */
     private val tileTitles = HashMap<String, LinkedHashSet<String>>()
@@ -52,10 +61,13 @@ class Engine(
             val feedBoxes = android.feed.flatMap { hits[it].orEmpty() }
             if (!feedOn(rule, hits, rule.id in titled)) {
                 scrolledInFeed.remove(rule.id)
+                openedIndex.remove(rule.id)
                 return@filter false
             }
             onFeed.add(rule.id)
-            if (scroll != null && scrollIsInFeed(scroll, android, feedBoxes)) scrolledInFeed.add(rule.id)
+            if (scroll != null && scrollIsInFeed(scroll, android, feedBoxes) && movedOn(rule.id, scroll)) {
+                scrolledInFeed.add(rule.id)
+            }
             now >= (cooldownUntil[rule.id] ?: 0L)
         }
 
@@ -85,6 +97,7 @@ class Engine(
     /** Forgets feed scrolls, e.g. when another window comes to the front. */
     fun resetSession() {
         scrolledInFeed.clear()
+        openedIndex.clear()
     }
 
     /** Forgets everything tied to the app in front; called when another app comes to the front. */
@@ -136,6 +149,12 @@ class Engine(
 
     private fun pageOn(android: AndroidRule, hits: Map<Matcher, List<Box>>): Boolean =
         android.page.isEmpty() || android.page.any { !hits[it].isNullOrEmpty() }
+
+    /** A scroll without an index counts as moving on; one with an index only when it left the opened item. */
+    private fun movedOn(ruleId: String, scroll: Scroll): Boolean {
+        if (scroll.index < 0) return true
+        return scroll.index != openedIndex.getOrPut(ruleId) { scroll.index }
+    }
 
     /** Only a scroll attributed to the feed ends an exemption; an unknown source keeps it. */
     private fun scrollIsInFeed(scroll: Scroll, android: AndroidRule, feedBoxes: List<Box>): Boolean {

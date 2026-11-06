@@ -34,7 +34,7 @@ On each relevant accessibility event in a target package:
 1. **cover**: every node matched by a `cover` matcher gets an opaque overlay at its screen bounds that swallows taps. Overlays move with the node and disappear when it does or the app leaves the front.
 2. **mask**: every node matched by a `mask` matcher gets the same opaque overlay, but touches pass through it. Use it for large areas (feed thumbnails), so the page still scrolls; a tap that opens the feed is then caught by `feed`. Overlays follow scrolling.
 3. **feed**: the user is in the feed if any `feed` matcher matches a node. A missing or empty `feed` means the whole app is the feed.
-4. **exempt**: if any `exempt` matcher matches, the feed action is held, until a scroll event comes from inside the feed. One reel sent in a DM plays; swiping to the next one does not.
+4. **exempt**: if any `exempt` matcher matches, the feed action is held, until a scroll event comes from inside the feed and moves to another item. A scroll that reports an item index (a pager's current item) counts only when the index differs from the first one seen on this feed, since a pager reports a scroll as it settles on the item it opened with; a scroll without an index always counts. One reel sent in a DM, or one of your own opened from your profile, plays; swiping to the next one does not.
 5. **action**: `back` presses Back; if the feed is still on screen 1.5 s later, it goes Home. `home` goes Home. After an action the rule does nothing for 1.5 s, so one feed entry triggers one action.
 
 Each fired action increments a per-rule counter kept on the device.

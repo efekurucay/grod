@@ -22,6 +22,7 @@ Instagram `com.instagram.android`:
 - Reels viewer: `clips_viewer_view_pager` (most projects), alternatives `clips_video_container`, `root_clips_layout`, `clips_viewer_pager`.
 - Bottom tabs: bar `tab_bar`, Reels `clips_tab`, Home `feed_tab` (verified on IG 453).
 - Reel opened from a DM uses the same viewer. DM markers: `reply_bar_container`, `reel_viewer_message_composer`, `reply_bar_edittext`.
+- The same viewer opened from a profile: a followed account's reels show the reply bar too (`reply_bar_container`, "Reply to <name>"). Your own reels have `clips_viewer_action_bar_title` = "Your reels". Explore and other profiles show "Reels" or "Explore" there, so that title alone is no marker. Opening the viewer sends a `TYPE_VIEW_SCROLLED` from the pager with the opened item's index (Instagram 453, Android 10).
 - **Trap:** Stories are called "reel" internally (`reel_viewer_root`, tray desc "reels tray container"). Never match `reel_*` on Instagram.
 - IG keeps hidden tabs in the tree: only nodes with `isVisibleToUser` and non-empty bounds count.
 

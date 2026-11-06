@@ -26,7 +26,7 @@ class RulesTest {
 
         val igAndroid = set.rules.single { it.id == "instagram-reels" }.android!!
         assertTrue(Matcher(text = "Watch more reels") in igAndroid.cover)
-        assertTrue(Matcher(descContains = "Reel by ") in igAndroid.mask)
+        assertTrue(Matcher(viewId = "clips_viewer_action_bar_title", text = "Your reels") in igAndroid.exempt)
 
         val tiktok = set.rules.single { it.id == "tiktok" }.android!!
         assertTrue(tiktok.feed.isEmpty())

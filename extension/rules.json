@@ -62,7 +62,7 @@
     {
       "id": "instagram-reels",
       "title": "Instagram Reels",
-      "why": "Reels is an endless feed. Stories, posts and DMs stay; a reel someone sends you plays once.",
+      "why": "Reels is an endless feed. Stories, posts and DMs stay; a reel someone sends you, your own reels and reels from accounts you follow play one at a time.",
       "enabled": true,
       "web": {
         "hosts": [
@@ -91,6 +91,10 @@
           },
           {
             "viewId": "reel_viewer_message_composer"
+          },
+          {
+            "viewId": "clips_viewer_action_bar_title",
+            "text": "Your reels"
           }
         ],
         "cover": [
@@ -101,15 +105,7 @@
             "text": "Watch more reels"
           }
         ],
-        "action": "back",
-        "mask": [
-          {
-            "descContains": "Reel by "
-          },
-          {
-            "viewId": "layout_container"
-          }
-        ]
+        "action": "back"
       }
     },
     {
@@ -198,5 +194,5 @@
     "hidden": [],
     "pauseSeconds": 10
   },
-  "revision": "c6ae0b63bd5b"
+  "revision": "6c58f4ee8230"
 }

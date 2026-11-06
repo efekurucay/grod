@@ -74,6 +74,17 @@ class EngineTest {
     private val inFeed = Scroll(Box(0, 200, 1080, 1900))
 
     @Test
+    fun pagerSettlingOnOpenedItemKeepsExemption() {
+        val engine = Engine()
+        val tree = FakeTree(listOf(feed, replyBar))
+        val pager = Box(0, 200, 1080, 1900)
+        // Opening an exempt reel: the pager reports a scroll on the item it opened with.
+        assertTrue(engine.evaluate(listOf(igRule), ig, tree, Scroll(pager, 4), 0).fire.isEmpty())
+        assertTrue(engine.evaluate(listOf(igRule), ig, tree, Scroll(pager, 4), 100).fire.isEmpty())
+        assertEquals(listOf(igRule), engine.evaluate(listOf(igRule), ig, tree, Scroll(pager, 5), 200).fire)
+    }
+
+    @Test
     fun scrollWithoutSourceKeepsExemption() {
         val engine = Engine()
         val tree = FakeTree(listOf(feed, replyBar))

@@ -10,7 +10,7 @@ Blocking Instagram outright also blocks your friends' stories and your DMs, so t
 
 | App | Gone | Still there |
 |---|---|---|
-| Instagram | Reels tab, Reels feed, reels in Explore | Stories, posts, DMs, search, a reel a friend sends you (plays once) |
+| Instagram | Reels tab, Reels feed, reels in Explore | Stories, posts, DMs, search, profile grids; one at a time: a reel sent to you, your own reels, reels from accounts you follow |
 | YouTube | Shorts tab, Shorts shelves, Shorts player | Home, search, subscriptions, normal videos (a Short opens as a normal video on the web) |
 | TikTok | Everything (the whole app is the feed) | — |
 | Facebook (web) | Reels | Posts, groups, Messenger |
