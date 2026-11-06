@@ -15,7 +15,7 @@ A small set of tokens and plain HTML/CSS components for grod surfaces that shoul
 
 - `tokens.json`: DTCG 2025.10 tokens. OKLCH colors (light and dark), type, space, radius, motion.
 - `components.css`: the components, hand-written against the `--g-*` variables.
-- `build.mjs`: writes `grod.css` (variables + components) here and to `extension/ui/grod.css`.
+- `build.mjs`: writes `grod.css` (variables + components) here, to `extension/ui/` and `site/`, plus Android colors (`grod_colors.xml`, light and night) and macOS colors (`GrodColors.swift`).
 - `index.html`: every component in light and dark, for review and the future landing page.
 
 ```sh

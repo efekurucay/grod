@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>grod: get rid of distracting, keep what matters</title>
+    <meta name="description" content="grod removes Reels, Shorts and other endless feeds and keeps the rest of the app. For Android, Chrome and macOS, driven by one rules file you change by telling an AI agent." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href="https://grod.efekurucay.com/" />
+    <link rel="icon" href="grod-icon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://grod.efekurucay.com/" />
+    <meta property="og:title" content="grod" />
+    <meta property="og:description" content="Get rid of distracting. Keep what matters. grod removes Reels, Shorts and other endless feeds and keeps the rest of the app." />
+    <meta property="og:image" content="https://grod.efekurucay.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The grod mark, the name grod and the tagline: Get rid of distracting. Keep what matters." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="grod.css" />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body class="g-app">
+    <header class="page hero">
+      <svg class="hero__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="9" r="5" />
+        <path d="M17 4v11.5a5 5 0 0 1-5 5H9" />
+      </svg>
+      <h1 class="hero__name">grod</h1>
+      <p class="hero__tagline">Get rid of distracting. Keep what matters.</p>
+      <p class="hero__lead">grod removes Reels, Shorts and other endless feeds, and keeps the rest of the app.</p>
+      <p class="hero__actions">
+        <a class="g-button" href="https://github.com/efekurucay/grod/releases/latest">Download</a>
+        <a class="g-button g-button--quiet" href="https://github.com/efekurucay/grod">Source</a>
+      </p>
+    </header>
+
+    <main class="page">
+      <section aria-labelledby="what">
+        <h2 id="what">What goes, what stays</h2>
+        <p>Blocking Instagram outright also blocks your friends' stories and your DMs, so the blocker gets turned off by Friday. grod takes out only the part that eats the evening: the endless short-video feed.</p>
+        <div class="apps g-section__body">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">App</th>
+                <th scope="col">Gone</th>
+                <th scope="col">Still there</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Instagram</th>
+                <td data-label="Gone">Reels tab, Reels feed, reels in Explore</td>
+                <td data-label="Still there">Stories, posts, DMs, search, a reel a friend sends you (plays once)</td>
+              </tr>
+              <tr>
+                <th scope="row">YouTube</th>
+                <td data-label="Gone">Shorts tab, Shorts shelves, Shorts player</td>
+                <td data-label="Still there">Home, search, subscriptions, normal videos (a Short opens as a normal video on the web)</td>
+              </tr>
+              <tr>
+                <th scope="row">TikTok</th>
+                <td data-label="Gone">Everything (the whole app is the feed)</td>
+                <td data-label="Still there">Nothing</td>
+              </tr>
+              <tr>
+                <th scope="row">Facebook (web)</th>
+                <td data-label="Gone">Reels</td>
+                <td data-label="Still there">Posts, groups, Messenger</td>
+              </tr>
+              <tr>
+                <th scope="row">Snapchat</th>
+                <td data-label="Gone">Spotlight</td>
+                <td data-label="Still there">Chats, Stories</td>
+              </tr>
+              <tr>
+                <th scope="row">A YouTube channel you choose</th>
+                <td data-label="Gone">Its videos everywhere: home, search, recommendations</td>
+                <td data-label="Still there">Every other channel</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>One item is fine. Swiping on to the next one is what grod stops.</p>
+      </section>
+
+      <section aria-labelledby="why">
+        <h2 id="why">Why it works this way</h2>
+        <ol class="findings">
+          <li>
+            <p><strong>Remove the feed, not the app.</strong> Taking the Facebook newsfeed out cut time on Facebook by 64%, and a reduced feed cut it by 39%.</p>
+            <p class="cite">Purohit et al., CHI 2023. <a href="https://doi.org/10.1145/3544548.3581187">doi:10.1145/3544548.3581187</a></p>
+          </li>
+          <li>
+            <p><strong>The harm is the fast switching.</strong> In a study with 60 people, only the short-video group got worse at remembering a planned task.</p>
+            <p class="cite">Chiossi et al., CHI 2023. <a href="https://doi.org/10.1145/3544548.3580778">doi:10.1145/3544548.3580778</a></p>
+          </li>
+          <li>
+            <p><strong>Say what changed.</strong> When interventions change without explanation, uninstalls nearly double. grod always says which rule acted and what stays usable.</p>
+            <p class="cite">Kovacs et al., CSCW 2018. <a href="https://doi.org/10.1145/3274364">doi:10.1145/3274364</a></p>
+          </li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="how">
+        <h2 id="how">How it works</h2>
+        <p>One rules file drives every platform.</p>
+        <dl class="g-kv products">
+          <dt>grod for Android</dt>
+          <dd>An accessibility service covers the Reels and Shorts tabs and leaves a feed with Back.</dd>
+          <dt>grod for Chrome</dt>
+          <dd>An extension hides shelves and tabs, turns Shorts into normal videos and blocks feed pages. Works in any Chromium browser.</dd>
+          <dt>grod for macOS</dt>
+          <dd>A menu bar app to switch rules on and off, and the source of rules for the extension.</dd>
+          <dt>grod CLI</dt>
+          <dd>The <code>grod</code> command and an MCP server. Every change is checked against a schema before it is saved.</dd>
+        </dl>
+      </section>
+
+      <section aria-labelledby="agent">
+        <h2 id="agent">Tell your agent</h2>
+        <p>Switch the basics in the Mac app's Settings. For anything new, open Claude Code and say what distracts you: the agent finds the right hook, writes the rule, checks it and pushes it out. Nothing needs a rebuild or a reload.</p>
+        <pre class="code" tabindex="0"><code>"X's Explore page has been pulling me in lately, block it."
+"Reels are back on my phone."
+"Block this channel: https://youtu.be/…"
+"What's been distracting me this week?"</code></pre>
+      </section>
+
+      <section aria-labelledby="calm">
+        <h2 id="calm">Notifications on the hour</h2>
+        <p>On Android, grod can hold app notifications and deliver the originals together on the hour, or at fixed times. Calls and alarms still ring. In a field study with 237 people, notifications three times a day improved attention and mood, while turning them off entirely made people anxious (<a href="https://doi.org/10.1016/j.chb.2019.07.016">Fitz et al., 2019</a>).</p>
+        <p>Once a week the phone hands its numbers to your Mac, and Claude Code suggests at most three changes, each backed by a number. You decide which to apply.</p>
+      </section>
+
+      <section aria-labelledby="privacy">
+        <h2 id="privacy">Privacy</h2>
+        <ul class="plain">
+          <li>Nothing leaves your devices. No accounts, no analytics, no server.</li>
+          <li>The Android service acts only inside the apps named in the rules, and stores or sends nothing it sees.</li>
+          <li>The extension talks only to <code>127.0.0.1</code>. The Android app goes online only for a rules URL you set yourself and for looking up a channel you share to it.</li>
+          <li>Logs stay in the app's private storage, are deleted after 30 days, and only adb on your own computer can read them.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="install">
+        <h2 id="install">Install</h2>
+        <ol class="steps">
+          <li><strong>Android.</strong> Download <code>grod-&lt;version&gt;.apk</code> from the <a href="https://github.com/efekurucay/grod/releases/latest">latest release</a> and open it on the phone. Follow the checklist at the top of the app. On Android 13 and later, first go to Settings → Apps → grod → ⋮ → Allow restricted settings.</li>
+          <li><strong>Chrome.</strong> Unzip <code>grod-extension-&lt;version&gt;.zip</code>, open <code>chrome://extensions</code>, turn on Developer mode, click Load unpacked and pick the folder.</li>
+          <li><strong>Everything else.</strong> The macOS app, the CLI and the agent need a clone of the repo. <a href="https://github.com/efekurucay/grod#everything-macos--ai-agent">Full setup</a>.</li>
+        </ol>
+        <p class="muted">No iOS version and no Play Store build. Apps change their screens, so rules need upkeep; when something slips through, tell the agent.</p>
+      </section>
+    </main>
+
+    <footer class="page footer">
+      <p>grod by <a href="https://efekurucay.com">Efe Kuruçay</a>. <a href="https://github.com/efekurucay/grod">Source on GitHub</a>.</p>
+    </footer>
+  </body>
+</html>

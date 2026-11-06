@@ -1,14 +1,14 @@
 // Turns tokens.json (DTCG 2025.10) into CSS variables and prepends them to components.css, and
 // writes the colors as Android resources (light in values/, dark in values-night/) and as SwiftUI colors for the macOS app.
 // Dependency-free on purpose: the extension has no bundler, and this is the only build grod UI needs.
-// Writes ui/grod.css and the extension copy, the same way `grod sync` writes the rules copies.
+// Writes ui/grod.css, the extension copy and the landing page copy, the same way `grod sync` writes the rules copies.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const here = new URL('.', import.meta.url).pathname;
 const tokens = JSON.parse(readFileSync(join(here, 'tokens.json'), 'utf8'));
 const components = readFileSync(join(here, 'components.css'), 'utf8');
-const outputs = [join(here, 'grod.css'), join(here, '../extension/ui/grod.css')];
+const outputs = [join(here, 'grod.css'), join(here, '../extension/ui/grod.css'), join(here, '../site/grod.css')];
 
 // Mode groups are dropped from variable names so light and dark define the same --g-* names.
 const MODES = ['light', 'dark'];

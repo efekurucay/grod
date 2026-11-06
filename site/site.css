@@ -1,0 +1,259 @@
+/* Page layout for the grod landing page. Colors, type and components come from grod.css. */
+
+.page {
+  width: 100%;
+  max-width: 46rem;
+  margin-inline: auto;
+  padding-inline: var(--g-space-16);
+}
+
+h2 {
+  margin: 0 0 var(--g-space-12);
+  font-size: var(--g-font-size-24);
+  font-weight: var(--g-font-weight-strong);
+  line-height: var(--g-font-leading-heading);
+}
+
+p {
+  margin: 0 0 var(--g-space-16);
+}
+
+main > section {
+  margin-top: calc(var(--g-space-48) + var(--g-space-16));
+}
+
+main > section > :last-child {
+  margin-bottom: 0;
+}
+
+a:not(.g-button) {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--g-color-input);
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color var(--g-duration-fast) var(--g-easing-out);
+}
+
+a:not(.g-button):hover {
+  text-decoration-color: currentColor;
+}
+
+.g-button {
+  text-decoration: none;
+}
+
+a:focus-visible,
+.code:focus-visible {
+  outline: 2px solid var(--g-color-ring);
+  outline-offset: 2px;
+  border-radius: var(--g-radius-sm);
+}
+
+code {
+  overflow-wrap: anywhere;
+}
+
+.muted,
+.cite {
+  color: var(--g-color-muted-foreground);
+}
+
+/* Hero */
+
+.hero {
+  padding-top: var(--g-space-48);
+}
+
+.hero__mark {
+  display: block;
+  width: 56px;
+  height: 56px;
+  /* The bowl's ink starts 5.8 of 24 units in; pull it back so it lines up with the text below. */
+  margin: 0 0 var(--g-space-16) -14px;
+}
+
+.hero__name {
+  margin: 0 0 var(--g-space-8);
+  font-size: 40px;
+  font-weight: var(--g-font-weight-strong);
+  line-height: var(--g-font-leading-heading);
+}
+
+.hero__tagline {
+  margin-bottom: var(--g-space-12);
+  font-size: var(--g-font-size-20);
+  font-weight: var(--g-font-weight-strong);
+  line-height: var(--g-font-leading-heading);
+}
+
+.hero__lead {
+  max-width: 34rem;
+  margin-bottom: var(--g-space-24);
+  color: var(--g-color-muted-foreground);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--g-space-12);
+  margin: 0;
+}
+
+.hero__actions .g-button {
+  min-width: 8rem;
+  padding-block: var(--g-space-12);
+}
+
+/* What goes, what stays */
+
+.apps {
+  margin-bottom: var(--g-space-16);
+  overflow: hidden;
+}
+
+.apps table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.apps th,
+.apps td {
+  padding: var(--g-space-12);
+  text-align: start;
+  vertical-align: top;
+}
+
+.apps thead th {
+  color: var(--g-color-muted-foreground);
+  font-size: var(--g-font-size-12);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.apps tbody tr {
+  border-top: 1px solid var(--g-color-border);
+}
+
+.apps tbody th {
+  width: 26%;
+  font-weight: var(--g-font-weight-strong);
+}
+
+/* On a phone each app becomes a block: name, then labeled Gone and Still there lines. */
+@media (max-width: 599px) {
+  .apps thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .apps tbody tr {
+    display: grid;
+    gap: var(--g-space-4);
+    padding: var(--g-space-12);
+  }
+
+  .apps tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .apps tbody th,
+  .apps td {
+    width: auto;
+    padding: 0;
+  }
+
+  .apps td::before {
+    content: attr(data-label) ": ";
+    color: var(--g-color-muted-foreground);
+  }
+}
+
+/* Why */
+
+.findings,
+.steps {
+  display: grid;
+  gap: var(--g-space-16);
+  margin: 0;
+  padding-inline-start: var(--g-space-24);
+}
+
+.findings p {
+  margin: 0;
+}
+
+.steps + p {
+  margin-top: var(--g-space-24);
+}
+
+.cite {
+  margin-top: var(--g-space-4);
+  font-size: var(--g-font-size-14);
+}
+
+/* How it works */
+
+.products {
+  row-gap: var(--g-space-12);
+}
+
+.products dt {
+  color: var(--g-color-foreground);
+  font-weight: var(--g-font-weight-strong);
+}
+
+@media (max-width: 599px) {
+  .products {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+  }
+
+  .products dd + dt {
+    margin-top: var(--g-space-12);
+  }
+}
+
+/* Tell your agent */
+
+.code {
+  margin: 0;
+  padding: var(--g-space-16);
+  border-radius: var(--g-radius-lg);
+  background: var(--g-color-muted);
+  font-family: var(--g-font-family-mono);
+  font-size: var(--g-font-size-14);
+  line-height: var(--g-font-leading-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.code code {
+  font-size: inherit;
+}
+
+/* Privacy */
+
+.plain {
+  display: grid;
+  gap: var(--g-space-8);
+  margin: 0;
+  padding-inline-start: var(--g-space-24);
+}
+
+/* Footer */
+
+.footer {
+  margin-top: var(--g-space-48);
+  padding-block: var(--g-space-24) var(--g-space-48);
+  color: var(--g-color-muted-foreground);
+}
+
+.footer p {
+  margin: 0;
+  padding-top: var(--g-space-24);
+  border-top: 1px solid var(--g-color-border);
+}
