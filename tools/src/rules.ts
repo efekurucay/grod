@@ -37,7 +37,9 @@ export type Notifications = { enabled: boolean; deliverEvery: number; deliverAt?
 
 export type Review = { weekday: number; time: string };
 
-export type RulesFile = { $schema?: string; schemaVersion: 1; rules: Rule[]; notifications?: Notifications; review?: Review };
+export type Launcher = { distracting?: string[]; hidden?: string[]; pauseSeconds?: number };
+
+export type RulesFile = { $schema?: string; schemaVersion: 1; rules: Rule[]; notifications?: Notifications; review?: Review; launcher?: Launcher };
 
 /** Repo root. GROD_HOME wins so the CLI works from any checkout. */
 export const repoRoot = process.env.GROD_HOME

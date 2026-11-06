@@ -192,5 +192,10 @@
   "review": {
     "weekday": 7,
     "time": "20:00"
+  },
+  "launcher": {
+    "distracting": [],
+    "hidden": [],
+    "pauseSeconds": 10
   }
 }

@@ -37,6 +37,10 @@ Usage:
   grod notifications allow|disallow <package> | category:<c> | title:<text>
   grod phone stats [days]       what pulled you in: notifications, rule fires, screen time
   grod phone search <text> [--app A] [--withdrawn] [--days N]
+  grod launcher                 home screen settings (Android)
+  grod launcher distracting|calm <package>   mark or unmark a distracting app
+  grod launcher hide|show <package>
+  grod launcher pause <seconds>
   grod review                   past weekly reviews
   grod review snapshot          save this week's numbers from the phone
   grod review set <1-7> <HH:MM> weekly reminder on the phone (1 = Monday)
@@ -96,6 +100,8 @@ async function main(argv: string[]): Promise<void> {
       return phone(argv.slice(1));
     case 'review':
       return review(argv.slice(1));
+    case 'launcher':
+      return launcher(argv.slice(1));
     case 'validate': {
       const errors = validate(JSON.parse(readFileSync(rulesPath, 'utf8')));
       if (errors.length) {
@@ -208,6 +214,26 @@ function phone([sub, ...rest]: string[]): void {
     return;
   }
   throw new Error('usage: grod phone stats [days] | grod phone search <text> [--app A] [--withdrawn] [--days N]');
+}
+
+function launcher([sub, value]: string[]): void {
+  const file = load();
+  const l = (file.launcher ??= { distracting: [], hidden: [], pauseSeconds: 10 });
+  const toggle = (list: string[] | undefined, pkg: string, on: boolean) => {
+    const rest = (list ?? []).filter((p) => p !== pkg);
+    return on ? [...rest, pkg] : rest;
+  };
+  if (!sub) {
+    console.log(JSON.stringify(l, null, 2));
+    return;
+  }
+  if (sub === 'distracting' || sub === 'calm') l.distracting = toggle(l.distracting, need(value, 'package'), sub === 'distracting');
+  else if (sub === 'hide' || sub === 'show') l.hidden = toggle(l.hidden, need(value, 'package'), sub === 'hide');
+  else if (sub === 'pause') l.pauseSeconds = Number(need(value, 'seconds'));
+  else throw new Error('usage: grod launcher [distracting|calm|hide|show <package> | pause <seconds>]');
+  save(file);
+  console.log(JSON.stringify(l, null, 2));
+  console.log(deliver());
 }
 
 function review([sub, a, b]: string[]): void {

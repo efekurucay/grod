@@ -27,6 +27,9 @@
     },
     "review": {
       "$ref": "#/$defs/review"
+    },
+    "launcher": {
+      "$ref": "#/$defs/launcher"
     }
   },
   "$defs": {
@@ -321,6 +324,34 @@
           "type": "string",
           "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
           "description": "Local time of the phone's reminder."
+        }
+      }
+    },
+    "launcher": {
+      "description": "grod launcher (Android home screen): text only, distracting apps quiet and behind a pause.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "distracting": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Packages shown small and dim, opened only after the pause. Packages named in android rules are added automatically."
+        },
+        "hidden": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Packages left out of the list; still reachable by search."
+        },
+        "pauseSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60,
+          "default": 10,
+          "description": "Wait before a distracting app opens; the user can back out during it. 0 turns the pause off."
         }
       }
     }

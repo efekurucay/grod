@@ -81,6 +81,15 @@ The top-level `review` object (`weekday`, 1 = Monday to 7 = Sunday, and `time`) 
 - **macOS app:** it notices when the phone appears on adb (USB or Wi-Fi). If the last review is more than 6 days old, it runs `grod review snapshot`, which saves the week's numbers (`phone_stats`) to `~/.config/grod/reviews/<YYYY>-W<ww>.json`. It then shows a notification. Clicking it opens Terminal with Claude Code on the `grod-review` skill, which reads the snapshot, writes `<YYYY>-W<ww>.md` next to it with what changed since last week and at most three proposals, and applies nothing without the user's yes.
 - Reviews stay outside the repository, because they hold personal data.
 
+## Launcher (Android)
+
+grod includes an optional home screen. The user picks it as the default launcher in Android settings.
+
+- **Layout:** a text-only list of apps in grod UI colors, with no icons, no badges and no notification counts. A search field sits at the top; typing filters the list, and Enter opens the first match.
+- **Distracting apps:** these are the packages named in any enabled `android` rule plus `launcher.distracting`. They are listed smaller and in the muted color, at the end. Opening one shows a pause screen for `pauseSeconds` seconds with the app's name and two choices: wait and open, or "Not now" (Grüning et al. 2023: the pause plus the option to back out did the work). Each choice is logged to `events-*.jsonl` (`rule: "launcher"`, `action: "opened"` or `"backed-out"`).
+- **Hidden apps:** `launcher.hidden` apps are left out of the list but still found by search.
+- **Long-press** an app for app info, hide/unhide, or mark/unmark as distracting. These choices stay on the phone, on top of the rules. To make one permanent everywhere, tell the agent or use the Mac app.
+
 ## macOS
 
 - Settings window (menu → Settings…, ⌘,): rules on/off, notification batching, blocked channels, weekly review, Safari guard. Every change runs through the grod CLI, so the file keeps one writer and the change is pushed to the phone. A status row shows whether the phone is connected (USB or Wi-Fi) and whether it runs the current revision. While the window is open, a phone that is behind gets synced.
