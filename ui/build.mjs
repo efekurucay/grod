@@ -173,3 +173,9 @@ ${swiftColors}
 `,
 );
 console.log(`wrote ${swiftFile}`);
+
+// The component showcase is published with the landing page at grod.efekurucay.com/ui/.
+const showcase = join(here, '../site/ui/index.html');
+mkdirSync(dirname(showcase), { recursive: true });
+writeFileSync(showcase, readFileSync(join(here, 'index.html'), 'utf8').replace('href="grod.css"', 'href="../grod.css"'));
+console.log(`wrote ${showcase}`);

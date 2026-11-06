@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>grod UI</title>
+    <link rel="stylesheet" href="../grod.css" />
+    <style>
+      body {
+        padding: var(--g-space-32) var(--g-space-24);
+      }
+      .intro {
+        max-width: 40rem;
+        margin: 0 0 var(--g-space-32);
+      }
+      .intro h1 {
+        margin: 0 0 var(--g-space-8);
+        font-size: var(--g-font-size-24);
+      }
+      .intro p {
+        margin: 0;
+        color: var(--g-color-muted-foreground);
+      }
+      .themes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+        gap: var(--g-space-24);
+      }
+      .theme {
+        padding: var(--g-space-24);
+        border: 1px solid var(--g-color-border);
+        border-radius: var(--g-radius-lg);
+      }
+      .theme > h2 {
+        margin: 0 0 var(--g-space-24);
+        font-size: var(--g-font-size-16);
+      }
+      .demo {
+        margin: 0 0 var(--g-space-32);
+      }
+      .demo:last-child {
+        margin-bottom: 0;
+      }
+      .demo > h3 {
+        margin: 0 0 var(--g-space-12);
+        font-size: var(--g-font-size-14);
+        font-weight: var(--g-font-weight-strong);
+      }
+      .stack {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--g-space-12);
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+        gap: var(--g-space-8);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: var(--g-font-size-12);
+      }
+      .swatches span {
+        display: block;
+        height: 32px;
+        margin-bottom: var(--g-space-4);
+        border: 1px solid var(--g-color-border);
+        border-radius: var(--g-radius-sm);
+      }
+      .frame {
+        border: 1px solid var(--g-color-border);
+        border-radius: var(--g-radius-lg);
+        overflow: hidden;
+      }
+      .frame .g-interstitial {
+        min-height: 0;
+      }
+    </style>
+  </head>
+  <body class="g-app">
+    <header class="intro">
+      <h1 class="g-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="9" r="5" />
+          <path d="M17 4v11.5a5 5 0 0 1-5 5H9" />
+        </svg>
+        grod UI
+      </h1>
+      <p>Components that never pull attention. Color only for state, no badges, no shadows. Built from tokens.json by build.mjs.</p>
+    </header>
+
+    <div class="themes">
+      <section class="theme g-app" data-g-theme="light"><h2>Light</h2></section>
+      <section class="theme g-app" data-g-theme="dark"><h2>Dark</h2></section>
+    </div>
+
+    <template id="components">
+      <div class="demo">
+        <h3>Palette</h3>
+        <ul class="swatches">
+          <li><span style="background: var(--g-color-background)"></span>background</li>
+          <li><span style="background: var(--g-color-surface)"></span>surface</li>
+          <li><span style="background: var(--g-color-muted)"></span>muted</li>
+          <li><span style="background: var(--g-color-foreground)"></span>foreground</li>
+          <li><span style="background: var(--g-color-muted-foreground)"></span>muted-fg</li>
+          <li><span style="background: var(--g-color-input)"></span>input</li>
+          <li><span style="background: var(--g-color-accent)"></span>accent</li>
+          <li><span style="background: var(--g-color-caution)"></span>caution</li>
+        </ul>
+      </div>
+
+      <div class="demo">
+        <h3>Button</h3>
+        <div class="stack">
+          <button class="g-button" type="button">Go back</button>
+          <button class="g-button g-button--quiet" type="button">Refresh</button>
+          <button class="g-button g-button--ghost" type="button">Details</button>
+          <button class="g-button" type="button" disabled>Saving</button>
+        </div>
+      </div>
+
+      <div class="demo">
+        <h3>Switch</h3>
+        <div class="stack">
+          <input class="g-switch" type="checkbox" role="switch" aria-label="On" checked />
+          <input class="g-switch" type="checkbox" role="switch" aria-label="Off" />
+          <input class="g-switch" type="checkbox" role="switch" aria-label="Disabled" disabled />
+        </div>
+      </div>
+
+      <div class="demo">
+        <h3>Section, list row</h3>
+        <section class="g-section">
+          <h4 class="g-section__title">Rules</h4>
+          <ul class="g-list g-section__body">
+            <li class="g-row"><span class="g-row__main"><span class="g-row__title">YouTube Shorts</span></span><span class="g-row__end">42</span></li>
+            <li class="g-row g-row--off"><span class="g-row__main"><span class="g-row__title">Facebook Reels</span><span class="g-row__meta">Off</span></span><span class="g-row__end">0</span></li>
+            <li class="g-row">
+              <label class="g-row__main" for="row-switch"><span class="g-row__title">Instagram Reels</span><span class="g-row__meta">Stories, posts and DMs stay</span></label>
+              <input class="g-switch" id="row-switch" type="checkbox" role="switch" checked />
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="demo">
+        <h3>Key–value list</h3>
+        <dl class="g-kv g-section__body g-section__body--padded">
+          <dt>Revision</dt>
+          <dd><code>2026-11-06T09:12:00Z</code></dd>
+          <dt>Source</dt>
+          <dd>localhost</dd>
+          <dt>Last fetch</dt>
+          <dd>11/6/2026, 9:14:03 AM</dd>
+        </dl>
+      </div>
+
+      <div class="demo">
+        <h3>Field</h3>
+        <div class="g-field">
+          <label class="g-field__label" for="rules-url">Rules URL</label>
+          <input class="g-input" id="rules-url" type="url" placeholder="http://192.168.1.20:47770/rules.json" />
+          <p class="g-field__hint">The Mac running grod, on the same network.</p>
+        </div>
+      </div>
+
+      <div class="demo">
+        <h3>Notice</h3>
+        <div class="stack" style="flex-direction: column; align-items: stretch">
+          <p class="g-notice"><span class="g-notice__title">Using bundled rules</span>The grod app is not running.</p>
+          <p class="g-notice g-notice--caution"><span class="g-notice__title">Rules file is invalid</span>Keeping the last good revision.</p>
+        </div>
+      </div>
+
+      <div class="demo">
+        <h3>Interstitial</h3>
+        <div class="frame g-app">
+          <main class="g-interstitial">
+            <div class="g-interstitial__body">
+              <p class="g-interstitial__label">
+                <span class="g-brand">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+                    <circle cx="12" cy="9" r="5" />
+                    <path d="M17 4v11.5a5 5 0 0 1-5 5H9" />
+                  </svg>
+                  grod
+                </span>
+              </p>
+              <h1 class="g-interstitial__title">Instagram Reels</h1>
+              <p class="g-interstitial__why">Reels is an endless feed. Stories, posts and DMs stay.</p>
+              <button class="g-button" type="button">Go back</button>
+            </div>
+          </main>
+        </div>
+      </div>
+    </template>
+
+    <script>
+      // One template, rendered into both theme panels, so light and dark always show identical markup.
+      const template = document.getElementById('components');
+      for (const panel of document.querySelectorAll('[data-g-theme]')) {
+        const copy = template.content.cloneNode(true);
+        // Ids must stay unique across the two copies.
+        for (const el of copy.querySelectorAll('[id]')) el.id += `-${panel.dataset.gTheme}`;
+        for (const el of copy.querySelectorAll('[for]')) el.htmlFor += `-${panel.dataset.gTheme}`;
+        panel.append(copy);
+      }
+    </script>
+  </body>
+</html>
