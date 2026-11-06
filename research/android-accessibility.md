@@ -41,7 +41,7 @@ Facebook `com.facebook.katana`: no stable ids. Selected node whose desc starts w
 
 Huawei P30 Pro, EMUI 12 (Android 10), 2026-11-06:
 - Instagram 453.0.0.57.79: `clips_tab` (desc "Reels") covered; a `/reels/` deep link opened the viewer and grod pressed Back. Stories tray and feed untouched. Feed posts that are reels show a "Watch more reels" button that opens the viewer, which then gets the same Back.
-- YouTube 21.43.523: bottom bar has 4 tabs; the Shorts tab is a node with desc "Shorts" inside `pivot_bar` and is covered. Tapping a Shorts thumbnail on Home opened the player and grod pressed Back within a second. The Home Shorts shelf stays visible: its header has desc "Shorts" (covered), its thumbnails have desc ending in "- play Short".
+- YouTube 21.43.523: bottom bar has 4 tabs; the Shorts tab is a node with desc "Shorts" inside `pivot_bar` and is covered. Tapping a Shorts thumbnail on Home opened the player and grod pressed Back within a second. The Home Shorts shelf stays visible: its header has desc "Shorts" (covered), its thumbnails have desc ending in "- play Short". grod leaves those thumbnails visible: a tap opens the player, which grod leaves with Back.
 - `uiautomator dump` suspends other accessibility services while it runs, so covers vanish until the next app event. Check covers with `adb exec-out screencap`, not with a dump.
 
 ## Mechanics

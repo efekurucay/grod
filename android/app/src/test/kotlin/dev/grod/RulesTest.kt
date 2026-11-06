@@ -21,7 +21,6 @@ class RulesTest {
         assertEquals(listOf("com.google.android.youtube", "app.revanced.android.youtube"), android.packages)
         assertEquals(listOf(Matcher(viewId = "reel_player_page_container"), Matcher(viewId = "reel_watch_player")), android.feed)
         assertEquals(listOf(Matcher(desc = "Shorts")), android.cover)
-        assertTrue(Matcher(descContains = "play Short") in android.mask)
         assertEquals(Action.BACK, android.action)
 
         val igAndroid = set.rules.single { it.id == "instagram-reels" }.android!!

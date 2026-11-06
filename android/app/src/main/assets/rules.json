@@ -51,12 +51,7 @@
             "desc": "Shorts"
           }
         ],
-        "action": "back",
-        "mask": [
-          {
-            "descContains": "play Short"
-          }
-        ]
+        "action": "back"
       }
     },
     {
@@ -194,5 +189,5 @@
     "hidden": [],
     "pauseSeconds": 10
   },
-  "revision": "6c58f4ee8230"
+  "revision": "77305a37a62b"
 }

@@ -51,12 +51,7 @@
             "desc": "Shorts"
           }
         ],
-        "action": "back",
-        "mask": [
-          {
-            "descContains": "play Short"
-          }
-        ]
+        "action": "back"
       }
     },
     {
