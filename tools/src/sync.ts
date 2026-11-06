@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { addChannel, normalizeHandle } from './channels.ts';
 import { load, repoRoot, revision, save, serialize, writeAtomic, type Channel } from './rules.ts';
@@ -36,15 +37,34 @@ export function sync({ adb: wanted = true } = {}): SyncReport {
   return { revision: rev, wrote, adb: adb ? pushToPhone(compiled, devices) : 'skipped', pulledChannels };
 }
 
+function readySerials(): string[] {
+  return execFileSync('adb', ['devices'], { encoding: 'utf8' })
+    .split('\n')
+    .slice(1)
+    .filter((l) => l.trim().endsWith('\tdevice'))
+    .map((l) => l.split('\t')[0]);
+}
+
+/**
+ * The Wi-Fi address android/wifi.sh saved. The phone keeps listening there after the Mac sleeps or the adb
+ * server restarts, but nothing reconnects on its own, so callers that find no phone try it once.
+ */
+export function reconnectWifi(): void {
+  try {
+    if (readySerials().length) return;
+    const address = readFileSync(join(homedir(), '.config/grod/phone-wifi'), 'utf8').trim();
+    if (address) execFileSync('adb', ['connect', address], { stdio: 'ignore', timeout: 5000 });
+  } catch {
+    // No saved address, adb missing, or the phone is away: callers report "no phone connected".
+  }
+}
+
 /** One serial per phone: a phone on USB and on Wi-Fi adb at once shows up twice. */
 function phones(): string[] {
+  reconnectWifi();
   let serials: string[];
   try {
-    serials = execFileSync('adb', ['devices'], { encoding: 'utf8' })
-      .split('\n')
-      .slice(1)
-      .filter((l) => l.trim().endsWith('\tdevice'))
-      .map((l) => l.split('\t')[0]);
+    serials = readySerials();
   } catch {
     return [];
   }

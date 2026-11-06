@@ -1,4 +1,5 @@
 import Foundation
+import GrodCore
 
 /// Every rules edit goes through the grod CLI, so the file keeps one writer that validates, saves atomically
 /// and pushes to the phone. Paths come from Info.plist because launchd starts the app without a PATH.
@@ -24,6 +25,19 @@ struct GrodCLI: Sendable {
         let tools = [Self.info("GrodAdbPath"), node].compactMap { $0.map { URL(fileURLWithPath: $0).deletingLastPathComponent().path } }
         environment["PATH"] = (tools + [environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"]).joined(separator: ":")
         return try await Self.capture(node, [cli] + arguments, environment: environment)
+    }
+
+    /// Phones ready on adb. With none, it first tries the Wi-Fi address android/wifi.sh saved: the phone keeps
+    /// listening there after the Mac sleeps or the adb server restarts, but adb does not reconnect on its own.
+    static func readyDevices(adb: String) async -> [String] {
+        let devices = WeeklyReview.readyDevices(adbOutput: (try? await capture(adb, ["devices"])) ?? "")
+        let saved = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/grod/phone-wifi")
+        guard devices.isEmpty,
+              let address = try? String(contentsOf: saved, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+              !address.isEmpty
+        else { return devices }
+        _ = try? await capture(adb, ["connect", address])
+        return WeeklyReview.readyDevices(adbOutput: (try? await capture(adb, ["devices"])) ?? "")
     }
 
     /// Runs a program without a shell and returns stdout and stderr together; a non-zero exit throws with that text.

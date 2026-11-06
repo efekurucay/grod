@@ -43,8 +43,7 @@ final class ReviewWatcher {
         busy = true
         Task {
             defer { busy = false }
-            let output = (try? await GrodCLI.capture(adb, ["devices"])) ?? ""
-            let present = !WeeklyReview.readyDevices(adbOutput: output).isEmpty
+            let present = !(await GrodCLI.readyDevices(adb: adb)).isEmpty
             let appeared = present && !phonePresent
             phonePresent = present
             guard appeared else { return }

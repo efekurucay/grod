@@ -78,7 +78,7 @@ cd macos && ./install.sh && cd ..              # menu bar app, starts at login
 cd android && ./install.sh
 ```
 
-The script builds and installs the app and switches its accessibility service on, including the "restricted settings" step Android 13+ requires for sideloaded apps. It then pushes the rules. To lose the cable afterwards, run `./wifi.sh` once.
+The script builds and installs the app and switches its accessibility service on, including the "restricted settings" step Android 13+ requires for sideloaded apps. It then pushes the rules. To lose the cable afterwards, run `./wifi.sh` once with the phone plugged in. The grod CLI and the macOS app reconnect to that address by themselves; after the phone restarts, run it again.
 
 ## Tell it what distracts you
 

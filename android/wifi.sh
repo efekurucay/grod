@@ -7,4 +7,7 @@ ip="$(adb -d shell ip -f inet addr show wlan0 | sed -n 's/.*inet \([0-9.]*\).*/\
 adb -d tcpip 5555 >/dev/null
 sleep 2
 adb connect "$ip:5555"
+# The grod CLI and the macOS app reconnect to this address when the phone drops off adb.
+mkdir -p "$HOME/.config/grod"
+echo "$ip:5555" > "$HOME/.config/grod/phone-wifi"
 echo "Unplug the phone: grod sync now reaches it at $ip while both are on the same network."

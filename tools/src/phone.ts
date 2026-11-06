@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { gunzipSync } from 'node:zlib';
-import { ANDROID_PACKAGE } from './sync.ts';
+import { ANDROID_PACKAGE, reconnectWifi } from './sync.ts';
 
 export type NotificationEvent = {
   t: number;
@@ -51,6 +51,7 @@ function lines<T>(raw: Buffer, name: string): T[] {
 export function readPhone(days: number, serial?: string) {
   const since = Date.now() - days * 86_400_000;
   const cutoff = new Date(since).toISOString().slice(0, 10);
+  if (!serial) reconnectWifi();
   try {
     broadcast(serial, 'dev.grod.EXPORT');
   } catch {

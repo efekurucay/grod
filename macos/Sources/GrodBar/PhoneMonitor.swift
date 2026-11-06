@@ -42,7 +42,7 @@ final class PhoneMonitor {
         busy = true
         Task {
             defer { busy = false }
-            let devices = WeeklyReview.readyDevices(adbOutput: (try? await GrodCLI.capture(adb, ["devices"])) ?? "")
+            let devices = await GrodCLI.readyDevices(adb: adb)
             let current = store.snapshot?.revision
             guard let serial = devices.first else {
                 status = .notConnected(waiting: phoneRevision != nil && phoneRevision != current)
