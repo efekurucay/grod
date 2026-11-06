@@ -193,5 +193,10 @@
     "weekday": 7,
     "time": "20:00"
   },
-  "revision": "e1f765a85233"
+  "launcher": {
+    "distracting": [],
+    "hidden": [],
+    "pauseSeconds": 10
+  },
+  "revision": "c6ae0b63bd5b"
 }

@@ -138,6 +138,7 @@ Every notification, every time a rule acts, and screen time per app are logged o
 - Network use:
   - The extension talks only to `127.0.0.1`.
   - The Android app goes online only for an optional rules URL you set yourself, and for resolving a channel you share to it (YouTube oEmbed).
+  - If you turn on launcher weather (`launcher.weather`), the launcher fetches weather from Open-Meteo with a rounded location, at most hourly; deny the location prompt to turn it off.
 - The phone logs notifications, rule actions and screen time in the app's private storage. Logs are deleted after `keepDays` (30 by default), and only adb on your own computer can read them.
 
 ## Limits

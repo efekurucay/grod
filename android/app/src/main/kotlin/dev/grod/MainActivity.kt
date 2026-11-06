@@ -115,6 +115,7 @@ class MainActivity : Activity() {
         status()
         notifications()
         review()
+        launcher()
         rules()
         channels()
         if (scrollToReview) {
@@ -202,6 +203,21 @@ class MainActivity : Activity() {
         ui.kv(body, "Next", DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(Batching.nextDelivery(now, s.slots, ZoneId.systemDefault()))))
         ui.kv(body, "Waiting", "${Held(this).waiting(now).size}")
         ui.kvEnd(body)
+    }
+
+    private fun launcher() {
+        val body = ui.section(content, "Launcher")
+        val home = packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY)
+        val isHome = home?.activityInfo?.packageName == packageName
+        ui.kv(body, "Home screen", if (isHome) "grod" else "Another app")
+        body.addView(ui.column().apply {
+            setPadding(ui.dp(12), ui.dp(4), ui.dp(12), ui.dp(12))
+            addView(ui.muted("Optional. Apps as a calm text list; distracting ones last and behind a pause.", 15f).apply {
+                setPadding(0, 0, 0, ui.dp(12))
+            })
+            addView(ui.button("Choose home app") { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) },
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        })
     }
 
     private fun rules() {

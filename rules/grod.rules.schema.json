@@ -352,6 +352,11 @@
           "maximum": 60,
           "default": 10,
           "description": "Wait before a distracting app opens; the user can back out during it. 0 turns the pause off."
+        },
+        "weather": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the current weather next to the date, from Open-Meteo with a location rounded to 0.1°, at most hourly. Off by default: no location prompt and no network."
         }
       }
     }
