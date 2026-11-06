@@ -33,32 +33,54 @@ class LauncherPrefs(context: Context) {
 class CloudSizes(context: Context) {
     private val app = context.applicationContext
     private val steps = app.getSharedPreferences("grod.cloud", Context.MODE_PRIVATE)
-    private val launches = app.getSharedPreferences("grod.launches", Context.MODE_PRIVATE)
+    /** Per package: times of launches from grod in the last 14 days, comma-separated. */
+    private val launches = app.getSharedPreferences("grod.launchLog", Context.MODE_PRIVATE)
 
     fun step(pkg: String): Int = steps.getInt(pkg, 0)
 
-    fun countLaunch(pkg: String) = launches.edit().putInt(pkg, launches.getInt(pkg, 0) + 1).apply()
+    /**
+     * Apps for the cloud, or null to show all (no usage access, so use is unknown). A launch from
+     * grod counts at once; screen time comes from the daily pass.
+     */
+    fun recent(): Set<String>? {
+        val used = steps.getStringSet(K_RECENT, null) ?: return null
+        return used + Launcher.recent(emptyMap(), launchTimes(), System.currentTimeMillis())
+    }
+
+    fun countLaunch(pkg: String) {
+        val now = System.currentTimeMillis()
+        val kept = (launchTimes()[pkg].orEmpty() + now).filter { it > now - Launcher.RECENT_MS }
+        launches.edit().putString(pkg, kept.joinToString(",")).apply()
+    }
+
+    private fun launchTimes(): Map<String, List<Long>> = launches.all.mapNotNull { (k, v) ->
+        (v as? String)?.let { k to it.split(',').mapNotNull(String::toLongOrNull) }
+    }.toMap()
 
     /** Blocking (reads usage stats); call off the main thread. */
     fun refreshIfStale(pkgs: Collection<String>, distracting: Set<String>) {
         val today = java.time.LocalDate.now().toString()
-        if (steps.getString(K_DAY, null) == today) return
+        // Also stale when usage access arrived after today's pass, which then had no use to go on.
+        if (steps.getString(K_DAY, null) == today && (steps.contains(K_RECENT) || !Permissions.usageAccess(app))) return
         val now = System.currentTimeMillis()
-        val usage = if (Permissions.usageAccess(app)) {
+        val access = Permissions.usageAccess(app)
+        fun foreground(windowMs: Long): Map<String, Long> = if (!access) emptyMap() else
             app.getSystemService(android.app.usage.UsageStatsManager::class.java)
-                .queryAndAggregateUsageStats(now - USAGE_WINDOW_MS, now)
+                .queryAndAggregateUsageStats(now - windowMs, now)
                 .mapValues { it.value.totalTimeInForeground }
-        } else {
-            emptyMap()
-        }
-        val counts = launches.all.mapNotNull { (k, v) -> (v as? Int)?.let { k to it } }.toMap()
+        val times = launchTimes()
+        val counts = times.mapValues { (_, t) -> t.count { it > now - Launcher.RECENT_MS } }
+        val usage = foreground(Launcher.RECENT_MS)
         val computed = Launcher.sizeSteps(pkgs, usage, counts, distracting)
-        steps.edit().clear().putString(K_DAY, today).apply { computed.forEach { (k, v) -> putInt(k, v) } }.apply()
+        steps.edit().clear().putString(K_DAY, today).apply {
+            computed.forEach { (k, v) -> putInt(k, v) }
+            if (access) putStringSet(K_RECENT, Launcher.recent(usage, times, now))
+        }.apply()
     }
 
     private companion object {
         const val K_DAY = "_day"
-        const val USAGE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000L
+        const val K_RECENT = "_inCloud"
     }
 }
 

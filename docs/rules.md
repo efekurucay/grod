@@ -90,6 +90,7 @@ grod includes an optional home screen. The user picks it as the default launcher
 - **Distracting apps:** these are the packages named in any enabled `android` rule plus `launcher.distracting`. They always get the smallest, muted size whatever their use, and their use does not count toward the scale. Opening one shows a pause screen for `pauseSeconds` seconds with the app's name and two choices: wait and open, or "Not now" (Grüning et al. 2023: the pause plus the option to back out did the work). Each choice is logged to `events-*.jsonl` (`rule: "launcher"`, `action: "opened"` or `"backed-out"`).
 - **Weather (`launcher.weather`, off by default):** the current temperature and a one-word sky ("14° · Cloudy") from Open-Meteo, for the phone's last known coarse location rounded to 0.1°, at most once an hour and only while the launcher is on screen. The location permission is asked once; denying it, or being offline, just hides the text.
 - **Hidden apps:** `launcher.hidden` apps are left out of the list but still found by search.
+- **Unused apps:** apps used less than a minute in the last 14 days leave the cloud and are found by search; two launches from grod in that time also keep an app in. Distracting apps follow the same rule. Without usage access every app is shown.
 - **Long-press** an app for app info, hide/unhide, or mark/unmark as distracting. These choices stay on the phone, on top of the rules. To make one permanent everywhere, tell the agent or use the Mac app.
 
 ## macOS

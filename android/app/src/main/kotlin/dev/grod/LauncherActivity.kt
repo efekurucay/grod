@@ -81,6 +81,10 @@ class LauncherActivity : Activity() {
             addView(cloud)
         }
         page.addView(scroll, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+        // The cloud is fitted to the space it has; refit when that space changes (keyboard, rotation).
+        scroll.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (bottom - top != oldBottom - oldTop) scroll.post(::fit)
+        }
         padForBars(page, ui.dp(16))
         setContentView(page)
 
@@ -179,8 +183,11 @@ class LauncherActivity : Activity() {
         val pm = packageManager
         val distracting = Launcher.distracting(store.rules, prefs.marks)
         thread(name = "grod-apps") {
-            val found = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+            val homes = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+                .map { it.activityInfo.packageName }.toSet()
+            val launchable = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
                 .map { AppEntry(it.activityInfo.packageName, it.activityInfo.name, it.loadLabel(pm).toString()) }
+            val found = Launcher.withoutHomes(launchable, homes, packageName)
             sizes.refreshIfStale(found.map { it.pkg }.toSet(), distracting)
             main.post {
                 apps = found
@@ -196,7 +203,7 @@ class LauncherActivity : Activity() {
         results = if (query.isBlank()) emptyList() else Launcher.search(apps, query, distracting)
         // One stable alphabetical cloud; distracting words sit among the rest, just small and muted.
         val shown = if (query.isBlank()) {
-            Launcher.list(apps, distracting, Launcher.hidden(store.rules, marks)).let { it.useful + it.distracting }
+            Launcher.list(apps, distracting, Launcher.hidden(store.rules, marks), sizes.recent()).let { it.useful + it.distracting }
                 .sortedWith(compareBy({ Launcher.fold(it.label) }, { it.label }))
         } else {
             results
@@ -204,6 +211,33 @@ class LauncherActivity : Activity() {
         cloud.removeAllViews()
         shown.forEach { cloud.addView(word(it, it.pkg in distracting)) }
         if (query.isNotBlank() && shown.isEmpty()) cloud.addView(ui.muted("No app matches.", 16f))
+        scroll.post(::fit)
+    }
+
+    /**
+     * Scales every word by one factor so the whole cloud fits on the screen without scrolling, as on
+     * a home screen; the size steps keep their ratios. Below 0.55 the words get too small, so a
+     * larger cloud scrolls instead.
+     */
+    private fun fit() {
+        val available = scroll.height - scroll.paddingTop - scroll.paddingBottom
+        if (available <= 0 || cloud.childCount == 0) return
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(scroll.width - scroll.paddingLeft - scroll.paddingRight, View.MeasureSpec.EXACTLY)
+        fun apply(scale: Double) {
+            for (i in 0 until cloud.childCount) {
+                val word = cloud.getChildAt(i) as TextView
+                val step = word.tag as? Int ?: continue
+                word.setTextSize(TypedValue.COMPLEX_UNIT_SP, (Launcher.SIZES_SP[step] * scale).toFloat())
+                word.minHeight = maxOf(ui.dp(MIN_TOUCH_DP), (ui.dp(TOUCH_DP) * scale).toInt())
+            }
+        }
+        val scale = Launcher.fitScale { candidate ->
+            apply(candidate)
+            cloud.measure(widthSpec, View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+            cloud.measuredHeight <= available
+        } ?: MIN_SCALE
+        apply(scale)
+        cloud.requestLayout()
     }
 
     private fun word(app: AppEntry, distracting: Boolean): TextView {
@@ -211,10 +245,11 @@ class LauncherActivity : Activity() {
         val step = if (distracting) 0 else sizes.step(app.pkg)
         val color = if (step >= 2) R.color.grod_foreground else R.color.grod_muted_foreground
         return ui.text(app.label, Launcher.SIZES_SP[step], color).apply {
+            tag = step
             setLineSpacing(0f, 1f)
             maxLines = 1
             gravity = Gravity.CENTER
-            minHeight = ui.dp(48)
+            minHeight = ui.dp(TOUCH_DP)
             isClickable = true
             setOnClickListener { open(app) }
             setOnLongClickListener { menu(app); true }
@@ -255,6 +290,9 @@ class LauncherActivity : Activity() {
 
     private companion object {
         const val WEATHER_CHECK_MS = 10 * 60 * 1000L
+        const val TOUCH_DP = 48
+        const val MIN_TOUCH_DP = 36
+        const val MIN_SCALE = 0.55
     }
 
     /** Base padding now; bar insets are added when the window reports them (edge to edge on Android 15). */

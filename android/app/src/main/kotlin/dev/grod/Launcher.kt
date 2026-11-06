@@ -64,6 +64,26 @@ object Launcher {
         return steps
     }
 
+    /**
+     * The largest scale in [min]..1 at which the cloud fits, found by binary search ([fits] grows
+     * false as the scale grows). Null when even [min] does not fit; the cloud then scrolls at [min].
+     */
+    fun fitScale(min: Double = 0.55, steps: Int = 10, fits: (Double) -> Boolean): Double? {
+        if (fits(1.0)) return 1.0
+        if (!fits(min)) return null
+        var lo = min
+        var hi = 1.0
+        repeat(steps) {
+            val mid = (lo + hi) / 2
+            if (fits(mid)) lo = mid else hi = mid
+        }
+        return lo
+    }
+
+    /** Other home screens are no use as tiles; grod's own entry stays. */
+    fun withoutHomes(apps: List<AppEntry>, homes: Set<String>, own: String): List<AppEntry> =
+        apps.filter { it.pkg == own || it.pkg !in homes }
+
     /** Packages of enabled android rules, plus `launcher.distracting`, plus phone marks, minus phone unmarks. */
     fun distractingBy(rules: RuleSet): Set<String> =
         rules.rules.filter { it.enabled }.flatMap { it.android?.packages.orEmpty() }.toSet() + rules.launcher.distracting
@@ -100,8 +120,24 @@ object Launcher {
 
     private fun sorted(apps: Collection<AppEntry>) = apps.sortedWith(compareBy({ fold(it.label) }, { it.label }))
 
-    fun list(apps: Collection<AppEntry>, distracting: Set<String>, hidden: Set<String>): Listing {
-        val shown = apps.filter { it.pkg !in hidden }
+    /**
+     * Packages in the cloud: in the last [RECENT_MS], at least [MIN_FOREGROUND_MS] of foreground
+     * time ([foregroundMs] covers that window) or at least [MIN_LAUNCHES] launches from grod.
+     */
+    fun recent(foregroundMs: Map<String, Long>, launchTimes: Map<String, List<Long>>, now: Long): Set<String> =
+        foregroundMs.filterValues { it >= MIN_FOREGROUND_MS }.keys +
+            launchTimes.filterValues { times -> times.count { it > now - RECENT_MS } >= MIN_LAUNCHES }.keys
+
+    const val RECENT_MS = 14 * 24 * 60 * 60 * 1000L
+    private const val MIN_FOREGROUND_MS = 60_000L
+    private const val MIN_LAUNCHES = 2
+
+    /**
+     * The cloud: everything not hidden and, when [recent] is known (usage access), only recently used
+     * apps; the rest are found by search. Distracting apps follow the same rule.
+     */
+    fun list(apps: Collection<AppEntry>, distracting: Set<String>, hidden: Set<String>, recent: Set<String>? = null): Listing {
+        val shown = apps.filter { it.pkg !in hidden && (recent == null || it.pkg in recent) }
         val (quiet, useful) = shown.partition { it.pkg in distracting }
         return Listing(sorted(useful), sorted(quiet))
     }

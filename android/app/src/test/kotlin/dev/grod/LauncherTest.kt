@@ -113,4 +113,45 @@ class LauncherTest {
         assertFalse(rules.launcher.weather)
         assertTrue(Rules.parse("""{"schemaVersion":1,"rules":[],"launcher":{"weather":true}}""").launcher.weather)
     }
+
+    @Test
+    fun fitScaleFindsTheLargestFittingFactor() {
+        assertEquals(1.0, Launcher.fitScale { true }!!, 0.0)
+        assertEquals(null, Launcher.fitScale { false })
+        // Fits up to 0.8: the search lands just below it, never above.
+        val found = Launcher.fitScale { it <= 0.8 }!!
+        assertTrue(found <= 0.8 && found > 0.79)
+        assertEquals(0.55, Launcher.fitScale { it <= 0.55 }!!, 0.0)
+    }
+
+    @Test
+    fun homeScreensAreLeftOut() {
+        val ap15 = app("com.aurhe.ap15", "ap15")
+        val grod = app("dev.grod", "grod")
+        val apps = listOf(ap15, grod, maps)
+        assertEquals(listOf(grod, maps), Launcher.withoutHomes(apps, setOf("com.aurhe.ap15", "com.huawei.android.launcher", "dev.grod"), "dev.grod"))
+    }
+
+    @Test
+    fun cloudKeepsAppsUsedAMinuteOrLaunchedTwice() {
+        val now = 100 * Launcher.RECENT_MS
+        val recent = Launcher.recent(
+            mapOf(maps.pkg to 60_000L, ig.pkg to 3_600_000L, tiktok.pkg to 59_000L),
+            mapOf(
+                isbank.pkg to listOf(now - 1_000L, now - 2_000L),
+                ogrenci.pkg to listOf(now - 1_000L),
+                stk.pkg to listOf(now - 1_000L, now - Launcher.RECENT_MS - 1),
+            ),
+            now,
+        )
+        assertEquals(setOf(maps.pkg, ig.pkg, isbank.pkg), recent)
+        val listing = Launcher.list(all, Launcher.distracting(rules, LocalMarks()), emptySet(), recent)
+        assertEquals(listOf("İşCep", "Maps"), listing.useful.map { it.label })
+        // Distracting apps follow the same rule: Instagram was used, TikTok (59 s) was not.
+        assertEquals(listOf("Instagram"), listing.distracting.map { it.label })
+        // Unknown use (no usage access): everything shows.
+        assertEquals(5, Launcher.list(all, emptySet(), setOf(stk.pkg, x.pkg)).useful.size)
+        // Search still finds the rest.
+        assertEquals(listOf(ogrenci), Launcher.search(all, "ogrenci", emptySet()))
+    }
 }
