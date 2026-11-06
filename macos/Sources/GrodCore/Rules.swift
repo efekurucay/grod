@@ -6,6 +6,7 @@ public struct Rules: Codable, Sendable {
     public let rules: [Rule]
     public let notifications: NotificationSettings?
     public let review: ReviewSettings?
+    public let launcher: LauncherSettings?
 }
 
 public struct Rule: Codable, Sendable {
@@ -15,6 +16,7 @@ public struct Rule: Codable, Sendable {
     public let enabled: Bool
     public let youtubeChannels: [YouTubeChannel]?
     public let web: WebRules?
+    public let android: AndroidRules?
     public let macos: MacRules?
 }
 
@@ -28,6 +30,17 @@ public struct WebRules: Codable, Sendable {
 public struct Redirect: Codable, Sendable {
     public let from: String
     public let to: String
+}
+
+/// Only what the Mac shows; the phone reads the rest of the section.
+public struct AndroidRules: Codable, Sendable {
+    public let packages: [String]
+}
+
+public struct LauncherSettings: Codable, Sendable, Equatable {
+    public let distracting: [String]?
+    public let hidden: [String]?
+    public let pauseSeconds: Int?
 }
 
 public struct MacRules: Codable, Sendable {

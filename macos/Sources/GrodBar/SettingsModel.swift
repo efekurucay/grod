@@ -7,7 +7,7 @@ import Observation
 @MainActor
 @Observable
 final class SettingsModel {
-    enum Section: Hashable { case rules, notifications, channels, review }
+    enum Section: Hashable { case rules, notifications, channels, launcher, review }
 
     struct RuleRow: Identifiable, Equatable {
         let id: String
@@ -25,6 +25,10 @@ final class SettingsModel {
     private(set) var allow: [NotificationAllow] = []
     private(set) var keepDays = 30
     private(set) var channels: [YouTubeChannel] = []
+    private(set) var pauseSeconds = 10
+    private(set) var distracting: [String] = []
+    private(set) var hidden: [String] = []
+    private(set) var ruleApps: [(rule: String, package: String)] = []
     private(set) var reviewWeekday = 7
     private(set) var reviewTime = "20:00"
     private(set) var errors: [Section: String] = [:]
@@ -43,6 +47,7 @@ final class SettingsModel {
     @ObservationIgnored private let setSafariGuard: (Bool) -> Void
     @ObservationIgnored private var queue: Task<Void, Never>?
     @ObservationIgnored private var pending = 0
+    @ObservationIgnored private var pauseWrite: Task<Void, Never>?
     private var safariEnabled: Bool
 
     init(store: RulesStore, cli: GrodCLI, safariGuard: Bool, setSafariGuard: @escaping (Bool) -> Void) {
@@ -65,6 +70,10 @@ final class SettingsModel {
         allow = notifications?.allow ?? (notifications == nil ? [.init(category: "event"), .init(category: "reminder")] : [])
         keepDays = notifications?.keepDays ?? 30
         channels = document.youtubeChannels
+        pauseSeconds = document.launcher?.pauseSeconds ?? 10
+        distracting = document.launcher?.distracting ?? []
+        hidden = document.launcher?.hidden ?? []
+        ruleApps = document.launcherRuleApps
         reviewWeekday = document.review?.weekday ?? 7
         reviewTime = document.review?.time ?? "20:00"
     }
@@ -139,6 +148,34 @@ final class SettingsModel {
     func removeChannel(_ channel: YouTubeChannel) {
         channels.removeAll { $0.handle == channel.handle }
         run(["channel", "remove", channel.handle], in: .channels)
+    }
+
+    /// Stepper clicks settle first, so one CLI run (and one phone push) carries the final value.
+    func setPauseSeconds(_ seconds: Int) {
+        pauseSeconds = seconds
+        pauseWrite?.cancel()
+        pauseWrite = Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            run(["launcher", "pause", String(seconds)], in: .launcher)
+        }
+    }
+
+    func addDistracting(_ input: String) {
+        let package = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !package.isEmpty, !distracting.contains(package) else { return }
+        distracting.append(package)
+        run(["launcher", "distracting", package], in: .launcher)
+    }
+
+    func removeDistracting(_ package: String) {
+        distracting.removeAll { $0 == package }
+        run(["launcher", "calm", package], in: .launcher)
+    }
+
+    func showApp(_ package: String) {
+        hidden.removeAll { $0 == package }
+        run(["launcher", "show", package], in: .launcher)
     }
 
     func setReview(weekday: Int, time: String) {

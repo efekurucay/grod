@@ -8,6 +8,13 @@ extension Rules {
     }
 }
 
+extension Rules {
+    /// Packages the launcher treats as distracting because an enabled rule covers them (docs/rules.md "Launcher").
+    public var launcherRuleApps: [(rule: String, package: String)] {
+        rules.filter(\.enabled).flatMap { rule in (rule.android?.packages ?? []).map { (rule.title, $0) } }
+    }
+}
+
 extension NotificationAllow {
     /// The argument `grod notifications allow|disallow` takes. Nil for an entry that combines fields:
     /// the CLI matches whole entries, so the app can take out only single-field ones.

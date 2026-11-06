@@ -76,3 +76,18 @@ final class WeeklyReviewTests: XCTestCase {
         XCTAssertEqual(check.terminationStatus, 0)
     }
 }
+
+final class LauncherTests: XCTestCase {
+    func testLauncherDecodeAndRuleApps() throws {
+        let json = #"""
+        {"schemaVersion":1,"rules":[
+          {"id":"ig","title":"Instagram Reels","enabled":true,"android":{"packages":["com.instagram.android"],"feed":[{"viewId":"x"}]}},
+          {"id":"tt","title":"TikTok","enabled":false,"android":{"packages":["com.zhiliaoapp.musically"]}},
+          {"id":"fb","title":"Facebook Reels","enabled":true,"web":{"hosts":["facebook.com"]}}],
+         "launcher":{"distracting":["com.twitter.android"],"hidden":[],"pauseSeconds":10}}
+        """#
+        let rules = try RulesSnapshot(data: Data(json.utf8)).document
+        XCTAssertEqual(rules.launcher, LauncherSettings(distracting: ["com.twitter.android"], hidden: [], pauseSeconds: 10))
+        XCTAssertEqual(rules.launcherRuleApps.map { "\($0.rule): \($0.package)" }, ["Instagram Reels: com.instagram.android"])
+    }
+}

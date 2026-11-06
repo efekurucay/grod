@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var allowKind = AllowKind.package
     @State private var allowInput = ""
     @State private var newTime = "12:00"
+    @State private var packageInput = ""
 
     var body: some View {
         ScrollView {
@@ -16,6 +17,7 @@ struct SettingsView: View {
                 rulesSection
                 notificationsSection
                 channelsSection
+                launcherSection
                 reviewSection
                 safariSection
             }
@@ -148,6 +150,50 @@ struct SettingsView: View {
         }
     }
 
+    private var launcherSection: some View {
+        GrodSection("Launcher on the phone", error: model.errors[.launcher], note: model.notes[.launcher]) {
+            Row {
+                RowText("Pause before a distracting app", meta: "You can back out while it counts down. 0 turns it off.")
+            } end: {
+                Stepper(value: Binding(get: { model.pauseSeconds }, set: { model.setPauseSeconds($0) }), in: 0...60) {
+                    Text(model.pauseSeconds == 0 ? "Off" : "\(model.pauseSeconds) s").monospacedDigit()
+                }
+                .fixedSize()
+            }
+            RowDivider()
+            Row {
+                RowText("Ask before opening", meta: Self.ruleAppsNote(model.ruleApps))
+            } end: { EmptyView() }
+            ForEach(model.distracting, id: \.self) { package in
+                RowDivider()
+                Row {
+                    Text(package)
+                } end: {
+                    GrodButton("Remove", style: .ghost) { model.removeDistracting(package) }
+                }
+            }
+            RowDivider()
+            Row {
+                GrodTextField("Package, e.g. com.twitter.android", text: $packageInput, onSubmit: addDistracting)
+            } end: {
+                GrodButton("Add", action: addDistracting)
+                    .disabled(packageInput.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            RowDivider()
+            Row {
+                RowText("Hidden apps", meta: model.hidden.isEmpty ? "None. Hide an app by long-pressing it on the phone." : "Left out of the list, still found by search.")
+            } end: { EmptyView() }
+            ForEach(model.hidden, id: \.self) { package in
+                RowDivider()
+                Row {
+                    Text(package)
+                } end: {
+                    GrodButton("Show", style: .ghost) { model.showApp(package) }
+                }
+            }
+        }
+    }
+
     private var reviewSection: some View {
         GrodSection("Weekly review", error: model.errors[.review], note: model.notes[.review]) {
             Row {
@@ -192,6 +238,11 @@ struct SettingsView: View {
         allowInput = ""
     }
 
+    private func addDistracting() {
+        model.addDistracting(packageInput)
+        packageInput = ""
+    }
+
     private func addChannel() {
         model.addChannel(channelInput) { channelInput = "" }
     }
@@ -221,6 +272,18 @@ struct SettingsView: View {
     private static func describe(_ entry: NotificationAllow) -> String {
         [entry.package.map { "App \($0)" }, entry.category.map { "Category \($0)" }, entry.titleContains.map { "Title contains “\($0)”" }]
             .compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// "Already included through rules: Instagram Reels (com.instagram.android), …", one entry per rule.
+    private static func ruleAppsNote(_ apps: [(rule: String, package: String)]) -> String? {
+        guard !apps.isEmpty else { return nil }
+        var order: [String] = []
+        var packages: [String: [String]] = [:]
+        for app in apps {
+            if packages[app.rule] == nil { order.append(app.rule) }
+            packages[app.rule, default: []].append(app.package)
+        }
+        return "Already included through rules: " + order.map { "\($0) (\(packages[$0]!.joined(separator: ", ")))" }.joined(separator: "; ") + "."
     }
 
     private static func everyOptions(including current: Int) -> [Int] {
