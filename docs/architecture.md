@@ -14,8 +14,8 @@ One rules file drives every platform. An AI agent (Claude Code, Codex) edits it 
    macos/ menubar app     extension/ (Chrome, Firefox)    android/ app
    - polls the rules      - polls 127.0.0.1:47770         - AccessibilityService
      file (2 s)             every minute                    in target apps only
-   - serves it on         - CSS hide, redirect, block     - covers Reels/Shorts tab
-     127.0.0.1:47770        on load and SPA navigation      with an overlay
+   - serves it on         - CSS hide, redirect, block     - spots Reels/Shorts
+     127.0.0.1:47770        on load and SPA navigation      feeds by view id
    - Safari guard         - bundled copy until the        - leaves the feed (Back)
    - quits whole-feed       first fetch                   - rules: bundled, adb push,
      apps                                                    or HTTPS URL

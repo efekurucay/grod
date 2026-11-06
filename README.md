@@ -10,8 +10,8 @@ Blocking Instagram outright also blocks your friends' stories and your DMs, so t
 
 | App | Gone | Still there |
 |---|---|---|
-| Instagram | Reels tab, Reels feed, reels in Explore | Stories, posts, DMs, search, profile grids; one at a time: a reel sent to you, your own reels, reels from accounts you follow |
-| YouTube | Shorts tab, Shorts player, Shorts shelves (browser) | Home, search, subscriptions, normal videos (a Short opens as a normal video on the web) |
+| Instagram | Reels feed, reels in Explore, Reels tab (browser) | Stories, posts, DMs, search, profile grids; one at a time: a reel sent to you, your own reels, reels from accounts you follow |
+| YouTube | Shorts player, Shorts tab and shelves (browser) | Home, search, subscriptions, normal videos (a Short opens as a normal video on the web) |
 | TikTok | Everything (the whole app is the feed) | — |
 | Facebook (web) | Reels | Posts, groups, Messenger |
 | Snapchat | Spotlight | Chats, Stories |
@@ -38,11 +38,11 @@ It comes as **grod for Android**, **grod for Chrome** (any Chromium browser: Chr
       ┌────────────────────┼──────────────────────────┐
   macOS menu bar app    browser extension         Android app
   serves the rules      hides shelves and tabs,   accessibility service:
-  on localhost          redirects Shorts,         covers the Reels/Shorts tab,
-                        blocks feed pages         leaves the feed with Back
+  on localhost          redirects Shorts,         leaves the Reels/Shorts feed
+                        blocks feed pages         with Back
 ```
 
-- **Android:** an accessibility service watches only the apps listed in the rules. It recognizes screens by view ids and labels, puts an overlay over the Reels and Shorts tabs that swallows taps, and leaves a feed with Back. Videos of blocked YouTube channels get an overlay that lets the page scroll.
+- **Android:** an accessibility service watches only the apps listed in the rules. It recognizes screens by view ids and labels, and leaves a Reels or Shorts feed with Back the moment it opens; the tabs stay visible, so nothing on screen is darkened. Videos of blocked YouTube channels get an overlay that lets the page scroll.
 - **Browser:** a Manifest V3 extension with CSS hiding, redirects and blocked pages. It handles YouTube's and Instagram's in-page navigation.
 - **macOS:** a menu bar app with a Settings window. From it you can switch rules on and off, set notification batching, manage blocked channels and set the weekly review. A status row shows whether the phone is connected and up to date. The app also serves the current rules to the extension, so the extension updates without a reload.
 - **Agent:** the `grod` CLI and an MCP server. The rules are validated against a JSON Schema before every save.

@@ -43,7 +43,7 @@ What the research says about short-form feeds and about tools that try to curb t
 ## Design principles grod follows
 
 1. **Remove the feature, not the app.** Only the Reels, Shorts and similar feeds go; stories, posts, DMs and search stay (Lyngs 2020; Purohit 2023; Zhang 2022). Whole-app blocks are kept for apps that are nothing but feed (TikTok).
-2. **Remove the trigger before the click.** The Reels and Shorts tabs and shelves are hidden or covered, so nothing pulls the user in (Lyngs 2019).
+2. **Remove the trigger before the click.** In the browser the Reels and Shorts tabs and shelves are hidden, so nothing pulls the user in (Lyngs 2019). On Android they stay visible, because overlays drawn over another app's tabs never match its colors and read as dark patches; there grod leaves the feed the moment it opens.
 3. **One item is fine, the scroll is not.** A Short opens as a normal video; a reel sent in a DM plays once. Swiping on to the next one is what gets stopped (Chiossi 2023: the harm comes from rapid switching).
 4. **Stable, explained interventions.** Rules do not rotate. When a rule acts, grod says which one and what stays usable (Kovacs 2018).
 5. **Light, private logging.** Each platform only counts how often each rule fired, on the device. There is no dashboard, because dashboards do not raise agency (Zhang 2022; Okeke 2018).

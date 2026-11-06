@@ -46,11 +46,6 @@
             "viewId": "reel_watch_player"
           }
         ],
-        "cover": [
-          {
-            "desc": "Shorts"
-          }
-        ],
         "action": "back"
       }
     },
@@ -90,14 +85,6 @@
           {
             "viewId": "clips_viewer_action_bar_title",
             "text": "Your reels"
-          }
-        ],
-        "cover": [
-          {
-            "viewId": "clips_tab"
-          },
-          {
-            "text": "Watch more reels"
           }
         ],
         "action": "back"
