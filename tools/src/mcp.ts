@@ -12,6 +12,7 @@ import {
   revision,
   save,
   upsertRule,
+  openingDefaults,
   scrollDefaults,
   type Rule,
 } from './rules.ts';
@@ -211,26 +212,43 @@ server.registerTool(
 );
 
 server.registerTool(
+  'set_opening_check',
+  {
+    description:
+      'Android opening check: when a distracting app comes to the front after awayMinutes away, grod asks Message / Look something up / Browse. Quick purposes open at once with a window (quickMinutes until learned from past sessions); Browse waits. Give only what changes; returns the full settings.',
+    inputSchema: z.object({
+      awayMinutes: z.number().int().min(1).max(240).optional(),
+      quickMinutes: z.number().int().min(1).max(10).optional(),
+    }),
+  },
+  (changes) =>
+    tool(() => {
+      const file = load();
+      file.opening = { ...file.opening, ...Object.fromEntries(Object.entries(changes).filter(([, v]) => v !== undefined)) };
+      save(file);
+      return `${JSON.stringify({ ...openingDefaults, ...file.opening })}. ${deliver()}`;
+    }),
+);
+
+server.registerTool(
   'set_launcher',
   {
     description:
-      'grod launcher on Android (text-only home screen). distracting apps are listed small and open only after a pause the user can back out of; hidden apps are only found by search. Apps named in android rules are distracting already. Give only what changes.',
+      'grod launcher on Android (text-only home screen). Distracting apps are listed small and go through the opening check; hidden apps are only found by search. Apps named in android rules are distracting already. Give only what changes.',
     inputSchema: z.object({
       addDistracting: z.array(z.string()).optional().describe('Package names, e.g. com.twitter.android'),
       removeDistracting: z.array(z.string()).optional(),
       hide: z.array(z.string()).optional(),
       show: z.array(z.string()).optional(),
-      pauseSeconds: z.number().int().min(0).max(60).optional(),
     }),
   },
-  ({ addDistracting = [], removeDistracting = [], hide = [], show = [], pauseSeconds }) =>
+  ({ addDistracting = [], removeDistracting = [], hide = [], show = [] }) =>
     tool(() => {
       const file = load();
-      const l = (file.launcher ??= { distracting: [], hidden: [], pauseSeconds: 10 });
+      const l = (file.launcher ??= { distracting: [], hidden: [] });
       const set = (list: string[] = [], add: string[], remove: string[]) => [...new Set([...list.filter((p) => !remove.includes(p)), ...add])];
       l.distracting = set(l.distracting, addDistracting, removeDistracting);
       l.hidden = set(l.hidden, hide, show);
-      if (pauseSeconds !== undefined) l.pauseSeconds = pauseSeconds;
       save(file);
       return `${JSON.stringify(l)}. ${deliver()}`;
     }),

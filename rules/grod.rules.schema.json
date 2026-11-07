@@ -25,6 +25,9 @@
     "scroll": {
       "$ref": "#/$defs/scroll"
     },
+    "opening": {
+      "$ref": "#/$defs/opening"
+    },
     "notifications": {
       "$ref": "#/$defs/notifications"
     },
@@ -234,7 +237,7 @@
       }
     },
     "launcher": {
-      "description": "grod launcher (Android home screen): text only, distracting apps quiet and behind a pause.",
+      "description": "grod launcher (Android home screen): text only, distracting apps quiet and small. Opening one goes through the opening check.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -251,13 +254,6 @@
             "type": "string"
           },
           "description": "Packages left out of the list; still reachable by search."
-        },
-        "pauseSeconds": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 60,
-          "default": 10,
-          "description": "Wait before a distracting app opens; the user can back out during it. 0 turns the pause off."
         },
         "weather": {
           "type": "boolean",
@@ -300,6 +296,27 @@
           "minimum": 1,
           "maximum": 1440,
           "default": 15
+        }
+      }
+    },
+    "opening": {
+      "description": "Opening check on Android: when a distracting app comes to the front after awayMinutes away, grod asks what it is for (docs/rules.md \"Opening check\").",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "awayMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 240,
+          "default": 5,
+          "description": "Minutes out of the app that make the next opening ask again."
+        },
+        "quickMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 2,
+          "description": "Time window for Message and Look something up until grod has learned one from past sessions."
         }
       }
     }

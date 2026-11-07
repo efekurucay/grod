@@ -9,6 +9,7 @@ import {
   save,
   upsertRule,
   validate,
+  openingDefaults,
   scrollDefaults,
   type Rule,
 } from './rules.ts';
@@ -31,6 +32,9 @@ Usage:
   grod scroll growth <number>   each pause is this many times longer
   grod scroll max <seconds>     longest pause
   grod scroll reset <minutes>   minutes without scrolling that start over
+  grod opening                  opening check settings (Android)
+  grod opening away <minutes>   minutes out of an app before it asks again
+  grod opening quick <minutes>  first window for Message and Look something up
   grod notifications            batching settings (Android)
   grod notifications on|off
   grod notifications every <minutes>
@@ -42,7 +46,6 @@ Usage:
   grod launcher                 home screen settings (Android)
   grod launcher distracting|calm <package>   mark or unmark a distracting app
   grod launcher hide|show <package>
-  grod launcher pause <seconds>
   grod review                   past weekly reviews
   grod review snapshot          save this week's numbers from the phone
   grod review set <1-7> <HH:MM> weekly reminder on the phone (1 = Monday)
@@ -96,6 +99,8 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'scroll':
       return scroll(argv.slice(1));
+    case 'opening':
+      return opening(argv.slice(1));
     case 'notifications':
       return notifications(argv.slice(1));
     case 'phone':
@@ -143,6 +148,20 @@ function scroll([sub, value]: string[]): void {
   file.scroll = { ...file.scroll, [keys[sub as keyof typeof keys]]: Number(need(value, 'number')) };
   save(file);
   console.log(JSON.stringify({ ...scrollDefaults, ...file.scroll }));
+  console.log(deliver());
+}
+
+function opening([sub, value]: string[]): void {
+  const file = load();
+  const keys = { away: 'awayMinutes', quick: 'quickMinutes' } as const;
+  if (!sub) {
+    console.log(JSON.stringify({ ...openingDefaults, ...file.opening }, null, 2));
+    return;
+  }
+  if (!(sub in keys)) throw new Error('usage: grod opening [away|quick <minutes>]');
+  file.opening = { ...file.opening, [keys[sub as keyof typeof keys]]: Number(need(value, 'minutes')) };
+  save(file);
+  console.log(JSON.stringify({ ...openingDefaults, ...file.opening }));
   console.log(deliver());
 }
 
@@ -202,7 +221,7 @@ function phone([sub, ...rest]: string[]): void {
 
 function launcher([sub, value]: string[]): void {
   const file = load();
-  const l = (file.launcher ??= { distracting: [], hidden: [], pauseSeconds: 10 });
+  const l = (file.launcher ??= { distracting: [], hidden: [] });
   const toggle = (list: string[] | undefined, pkg: string, on: boolean) => {
     const rest = (list ?? []).filter((p) => p !== pkg);
     return on ? [...rest, pkg] : rest;
@@ -213,8 +232,7 @@ function launcher([sub, value]: string[]): void {
   }
   if (sub === 'distracting' || sub === 'calm') l.distracting = toggle(l.distracting, need(value, 'package'), sub === 'distracting');
   else if (sub === 'hide' || sub === 'show') l.hidden = toggle(l.hidden, need(value, 'package'), sub === 'hide');
-  else if (sub === 'pause') l.pauseSeconds = Number(need(value, 'seconds'));
-  else throw new Error('usage: grod launcher [distracting|calm|hide|show <package> | pause <seconds>]');
+  else throw new Error('usage: grod launcher [distracting|calm|hide|show <package>]');
   save(file);
   console.log(JSON.stringify(l, null, 2));
   console.log(deliver());

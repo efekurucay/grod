@@ -84,6 +84,12 @@ class RulesTest {
             "review weekday" to """{"schemaVersion":1,"rules":[],"review":{"weekday":0,"time":"20:00"}}""",
             "review time" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"8pm"}}""",
             "review field" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"20:00","day":"sun"}}""",
+            "launcher pauseSeconds" to """{"schemaVersion":1,"rules":[],"launcher":{"pauseSeconds":10}}""",
+            "opening not object" to """{"schemaVersion":1,"rules":[],"opening":5}""",
+            "opening field" to """{"schemaVersion":1,"rules":[],"opening":{"awaySeconds":300}}""",
+            "opening away zero" to """{"schemaVersion":1,"rules":[],"opening":{"awayMinutes":0}}""",
+            "opening quick too long" to """{"schemaVersion":1,"rules":[],"opening":{"quickMinutes":11}}""",
+            "opening quick fraction" to """{"schemaVersion":1,"rules":[],"opening":{"quickMinutes":1.5}}""",
         )
         for ((name, json) in bad) {
             try {
@@ -102,6 +108,14 @@ class RulesTest {
             Rules.parse("""{"schemaVersion":1,"rules":[],"scroll":{"freeSeconds":30,"growth":1.5,"resetMinutes":5}}""").scroll,
         )
         assertEquals(ScrollSettings(60, 10, 2.0, 300, 15), Rules.parse("""{"schemaVersion":1,"rules":[]}""").scroll)
+    }
+
+    @Test
+    fun parsesOpeningSettingsWithDefaults() {
+        assertEquals(OpeningSettings(5, 2), Rules.parse(read("grod.rulesFile")).opening)
+        assertEquals(OpeningSettings(), Rules.parse("""{"schemaVersion":1,"rules":[]}""").opening)
+        assertEquals(OpeningSettings(10, 2), Rules.parse("""{"schemaVersion":1,"rules":[],"opening":{"awayMinutes":10}}""").opening)
+        assertEquals(10 * 60_000L, OpeningSettings(10, 2).awayMs)
     }
 
     @Test

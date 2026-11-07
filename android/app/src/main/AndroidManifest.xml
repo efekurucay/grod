@@ -11,7 +11,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Launcher weather, only when launcher.weather is on: the last known coarse location, rounded. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Screen time for the usage export; granted with appops by install.sh. -->
+    <!-- Screen time for the usage export, and when a distracting app left the front for the opening
+         check; granted with appops by install.sh. -->
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
@@ -62,16 +63,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Scroll pause and opening question: each its own task over the app, so finishing it uncovers
+             the app; noHistory ends it when the user goes elsewhere. -->
         <activity
-            android:name=".PauseActivity"
+            android:name=".ScrollPauseActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:noHistory="true"
             android:taskAffinity="" />
-
-        <!-- Scroll pause: its own task over the app, so finishing it uncovers the app; noHistory ends it when the user goes elsewhere. -->
         <activity
-            android:name=".ScrollPauseActivity"
+            android:name=".OpeningCheckActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:noHistory="true"

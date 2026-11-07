@@ -23,7 +23,7 @@ extension's responsibility. Other browsers are not controlled by the app.
 `./install.sh` builds, copies the app to `~/Applications`, and replaces and loads
 the `dev.grod.bar` LaunchAgent. It runs at login without restart-on-quit behavior.
 
-Settings… (⌘,) changes rules, the scroll pause, phone notification batching, the weekly
+Settings… (⌘,) changes rules, the scroll pause, the phone's opening check, phone notification batching, the weekly
 review time and the Safari guard. Every change runs the grod CLI (`GrodNodePath`,
 `GrodCLIPath`), which validates, saves and pushes to the phone; the window shows the
 phone's adb status (`GrodAdbPath`) while open and syncs a phone that is behind.

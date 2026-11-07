@@ -2,6 +2,7 @@ package dev.grod
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 
 /** Long-press choices; they stay on this phone (docs/rules.md, "Launcher (Android)"). */
 class LauncherPrefs(context: Context) {
@@ -17,6 +18,11 @@ class LauncherPrefs(context: Context) {
             .apply()
 
     private fun set(key: String): Set<String> = prefs.getStringSet(key, null).orEmpty().toSet()
+
+    /** The caller keeps [listener] referenced: SharedPreferences holds it weakly. */
+    fun listen(listener: SharedPreferences.OnSharedPreferenceChangeListener) = prefs.registerOnSharedPreferenceChangeListener(listener)
+
+    fun unlisten(listener: SharedPreferences.OnSharedPreferenceChangeListener) = prefs.unregisterOnSharedPreferenceChangeListener(listener)
 
     private companion object {
         const val K_DISTRACTING = "distracting"
@@ -93,7 +99,3 @@ fun Context.launch(app: AppEntry) {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED),
     )
 }
-
-/** Logs a launcher choice to events-*.jsonl (docs/data.md). */
-fun Context.logLauncher(pkg: String, action: String) =
-    LogWriter.get(this).append("events", LogLines.event(System.currentTimeMillis(), "launcher", pkg, action), RuleStore.get(this).rules.keepDays)

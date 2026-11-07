@@ -159,18 +159,42 @@ object History {
     private fun JSONObject.str(name: String): String? = if (has(name) && !isNull(name)) getString(name) else null
 }
 
-/** Today's scroll pauses from the events log: shown, then left or continued. */
-data class PauseCount(val paused: Int, val left: Int, val continued: Int) {
+/**
+ * Today's scroll pauses and openings from the events log. Both log `left`; a pause's `left` is the
+ * line right after its `paused` for the same app, any other `left` is Leave on the opening question.
+ */
+data class PauseCount(
+    val paused: Int,
+    val left: Int,
+    val continued: Int,
+    val openings: Map<Purpose, Int> = emptyMap(),
+    val openingsLeft: Int = 0,
+) {
     companion object {
         fun of(lines: List<String>): PauseCount {
-            val actions = lines.mapNotNull { line ->
-                try {
-                    JSONObject(line).optString("action")
+            var paused = 0
+            var left = 0
+            var continued = 0
+            var openingsLeft = 0
+            val openings = LinkedHashMap<Purpose, Int>()
+            val lastAction = HashMap<String, String>()
+            for (line in lines) {
+                val o = try {
+                    JSONObject(line)
                 } catch (e: JSONException) {
-                    null
+                    continue
                 }
-            }.groupingBy { it }.eachCount()
-            return PauseCount(actions["paused"] ?: 0, actions["left"] ?: 0, actions["continued"] ?: 0)
+                val pkg = o.optString("pkg")
+                val action = o.optString("action")
+                when (action) {
+                    "paused" -> paused++
+                    "continued" -> continued++
+                    "left" -> if (lastAction[pkg] == "paused") left++ else openingsLeft++
+                    "opening" -> Purpose.of(o.optString("purpose"))?.let { openings[it] = (openings[it] ?: 0) + 1 }
+                }
+                lastAction[pkg] = action
+            }
+            return PauseCount(paused, left, continued, openings, openingsLeft)
         }
     }
 }

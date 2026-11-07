@@ -128,10 +128,27 @@ class HistoryTest {
             LogLines.event(2, "instagram", "com.instagram.android", "left"),
             LogLines.event(3, "youtube", "com.google.android.youtube", "paused"),
             LogLines.event(4, "youtube", "com.google.android.youtube", "continued"),
-            LogLines.event(5, "launcher", "com.instagram.android", "opened"),
             "{",
         )
         assertEquals(PauseCount(2, 1, 1), PauseCount.of(lines))
         assertEquals(PauseCount(0, 0, 0), PauseCount.of(emptyList()))
+    }
+
+    @Test
+    fun countsTodaysOpeningsApartFromPauses() {
+        val ig = "com.instagram.android"
+        val lines = listOf(
+            LogLines.event(1, "instagram", ig, "opening", "message"),
+            LogLines.event(2, "instagram", ig, "paused"),
+            LogLines.event(3, "instagram", ig, "left"),
+            LogLines.event(4, "instagram", ig, "session", "message", 180_000),
+            // Leave on the question: a left that does not follow a pause.
+            LogLines.event(5, "instagram", ig, "left"),
+            LogLines.event(6, "launcher", "com.twitter.android", "opening", "browse"),
+            LogLines.event(7, "instagram", ig, "opening", "message"),
+            LogLines.event(8, "instagram", ig, "opening", "lookup"),
+        )
+        val count = PauseCount.of(lines)
+        assertEquals(PauseCount(1, 1, 0, mapOf(Purpose.MESSAGE to 2, Purpose.BROWSE to 1, Purpose.LOOKUP to 1), 1), count)
     }
 }

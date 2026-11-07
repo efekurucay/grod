@@ -22,6 +22,7 @@ data class RuleSet(
     val notifications: NotificationSettings? = null,
     val review: ReviewSettings? = null,
     val launcher: LauncherSettings = LauncherSettings(),
+    val opening: OpeningSettings = OpeningSettings(),
 ) {
     /** Days of on-device logs to keep (docs/data.md). */
     val keepDays: Int get() = notifications?.keepDays ?: NotificationSettings.DEFAULT_KEEP_DAYS
@@ -75,7 +76,8 @@ object Rules {
         val notifications = root.opt("notifications")?.let { parseNotifications(it, "notifications") }
         val review = root.opt("review")?.let { parseReview(it, "review") }
         val launcher = root.opt("launcher")?.let { parseLauncher(it, "launcher") } ?: LauncherSettings()
-        return RuleSet(revision, rules, scroll, notifications, review = review, launcher = launcher)
+        val opening = root.opt("opening")?.let { parseOpening(it, "opening") } ?: OpeningSettings()
+        return RuleSet(revision, rules, scroll, notifications, review = review, launcher = launcher, opening = opening)
     }
 
     private fun parseScroll(raw: Any, path: String): ScrollSettings {
@@ -129,14 +131,23 @@ object Rules {
 
     private fun parseLauncher(raw: Any, path: String): LauncherSettings {
         val o = raw as? JSONObject ?: fail(path, "must be an object")
-        unknownKey(o, setOf("distracting", "hidden", "pauseSeconds", "weather"))?.let { fail("$path.$it", "unknown field") }
+        unknownKey(o, setOf("distracting", "hidden", "weather"))?.let { fail("$path.$it", "unknown field") }
         fun packages(key: String): List<String> {
             val arr = (o.opt(key) ?: return emptyList()) as? JSONArray ?: fail("$path.$key", "must be an array")
             return (0 until arr.length()).map { i -> arr.opt(i) as? String ?: fail("$path.$key[$i]", "must be a string") }
         }
-        val pause = o.opt("pauseSeconds")?.let { int(it, "$path.pauseSeconds", 0..60) } ?: LauncherSettings.DEFAULT_PAUSE
         val weather = o.opt("weather")?.let { it as? Boolean ?: fail("$path.weather", "must be a boolean") } ?: false
-        return LauncherSettings(packages("distracting"), packages("hidden"), pause, weather)
+        return LauncherSettings(packages("distracting"), packages("hidden"), weather)
+    }
+
+    private fun parseOpening(raw: Any, path: String): OpeningSettings {
+        val o = raw as? JSONObject ?: fail(path, "must be an object")
+        unknownKey(o, setOf("awayMinutes", "quickMinutes"))?.let { fail("$path.$it", "unknown field") }
+        val d = OpeningSettings()
+        return OpeningSettings(
+            awayMinutes = o.opt("awayMinutes")?.let { int(it, "$path.awayMinutes", 1..240) } ?: d.awayMinutes,
+            quickMinutes = o.opt("quickMinutes")?.let { int(it, "$path.quickMinutes", 1..10) } ?: d.quickMinutes,
+        )
     }
 
     private fun parseReview(raw: Any, path: String): ReviewSettings {

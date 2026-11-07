@@ -32,8 +32,8 @@ import kotlin.concurrent.thread
 
 /**
  * grod's optional home screen (docs/rules.md, "Launcher (Android)"): app names as a centered word
- * cloud, sized by use, in grod colors. Distracting apps are always the smallest, muted word and open
- * only after [PauseActivity].
+ * cloud, sized by use, in grod colors. Distracting apps are always the smallest, muted word; the
+ * opening check catches them once they are in front, whatever route opened them.
  */
 class LauncherActivity : Activity() {
     private lateinit var ui: Ui
@@ -256,19 +256,7 @@ class LauncherActivity : Activity() {
         }
     }
 
-    private fun open(app: AppEntry) {
-        val distracting = app.pkg in Launcher.distracting(store.rules, prefs.marks)
-        val pause = store.rules.launcher.pauseSeconds
-        if (distracting && pause > 0) {
-            startActivity(Intent(this, PauseActivity::class.java)
-                .putExtra(PauseActivity.EXTRA_PKG, app.pkg)
-                .putExtra(PauseActivity.EXTRA_COMPONENT, app.component)
-                .putExtra(PauseActivity.EXTRA_LABEL, app.label))
-        } else {
-            if (distracting) logLauncher(app.pkg, "opened")
-            launch(app)
-        }
-    }
+    private fun open(app: AppEntry) = launch(app)
 
     private fun menu(app: AppEntry) {
         val marks = prefs.marks

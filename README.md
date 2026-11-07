@@ -11,6 +11,7 @@ Blocking Instagram outright also blocks your friends' stories and your DMs, so t
 - Scroll for a minute in Instagram, YouTube, TikTok, X, LinkedIn, Facebook or Snapchat, on your phone or in the browser, and a pause screen appears: wait 10 seconds, or leave.
 - Keep scrolling and the next pause is 20 seconds, then 40, 80, up to 5 minutes.
 - Put the phone down for 15 minutes and it starts short again.
+- On the phone, opening one of them asks what for: Message, Look something up, or Browse. A message opens at once with a few minutes' window that grod learns from your own sessions; Browse makes you wait first. Say "just a message" too often and still stay for half an hour, and that answer stops opening at once.
 - Messages, posts you open, a video you watch, search: none of that is scrolling, so none of it is slowed down.
 
 It comes as **grod for Android**, **grod for Chrome** (any Chromium browser: Chrome, Comet, Arc, Brave, Edge), **grod for macOS** and the **grod CLI**. It is driven by one rules file, and you change that file by telling an AI agent what distracts you.

@@ -10,7 +10,7 @@ class LauncherTest {
         """{"schemaVersion":1,"rules":[
             {"id":"ig","title":"IG","enabled":true,"android":{"packages":["com.instagram.android"]}},
             {"id":"tt","title":"TT","enabled":false,"android":{"packages":["com.zhiliaoapp.musically"]}}],
-           "launcher":{"distracting":["com.twitter.android"],"hidden":["com.android.stk"],"pauseSeconds":5}}""",
+           "launcher":{"distracting":["com.twitter.android"],"hidden":["com.android.stk"]}}""",
     )
 
     private fun app(pkg: String, label: String) = AppEntry(pkg, "$pkg.Main", label)
@@ -25,7 +25,7 @@ class LauncherTest {
 
     @Test
     fun parsesLauncherSettings() {
-        assertEquals(LauncherSettings(listOf("com.twitter.android"), listOf("com.android.stk"), 5), rules.launcher)
+        assertEquals(LauncherSettings(listOf("com.twitter.android"), listOf("com.android.stk")), rules.launcher)
         assertEquals(LauncherSettings(), Rules.parse("""{"schemaVersion":1,"rules":[]}""").launcher)
     }
 

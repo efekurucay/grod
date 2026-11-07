@@ -24,11 +24,13 @@ One JSON object per line. The newest day is plain text and older days are gzippe
 
 The app's Notifications tab shows the `posted` lines as a history, newest first, with search and an app filter. A row is tagged "held" when grod held it, and "removed by app" when a `removed` line with reason `app` has the same package and title; chat apps also do that when the chat is read on another device, so it does not mean the sender deleted the message. Deleting there rewrites these files atomically, on the log thread. Swiping a row away deletes its `posted` line after a few seconds of undo. Bulk deletes ask first, with the count: all from the filtered app, all from one conversation or sender (an app's lines with that `title`, long-press a row), one day (long-press its header), everything logged before the start of the day 7 days ago, or everything; they take the `posted` and `removed` lines in their scope. Any `removed` line also goes once no `posted` line with its package and title is left. Deleted entries are gone for good, including for `grod phone …` and the weekly review.
 
-`events-YYYY-MM-DD.jsonl`, one line each time grod acts. A scroll pause logs `paused` when it appears and `left` or `continued` when it ends; the launcher logs `opened` or `backed-out` for a distracting app (`rule: "launcher"`).
+`events-YYYY-MM-DD.jsonl`, one line each time grod acts. A scroll pause logs `paused` when it appears and `left` or `continued` when it ends. The opening check (docs/rules.md) logs `opening` with `purpose` when an answer is given, `left` when Leave is tapped, and `session` with `purpose` and `ms` (milliseconds) when the session ends. `rule` is the rule of the app's package, or `launcher` for a package that is only in `launcher.distracting`.
 
 ```json
 {"t":1762394400123,"rule":"instagram","pkg":"com.instagram.android","action":"paused"}
 {"t":1762394410456,"rule":"instagram","pkg":"com.instagram.android","action":"left"}
+{"t":1762394500000,"rule":"instagram","pkg":"com.instagram.android","action":"opening","purpose":"message"}
+{"t":1762394680000,"rule":"instagram","pkg":"com.instagram.android","action":"session","purpose":"message","ms":180000}
 ```
 
 ## Export

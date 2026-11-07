@@ -5,6 +5,7 @@ public struct Rules: Codable, Sendable {
     public let schemaVersion: Int
     public let rules: [Rule]
     public let scroll: ScrollSettings?
+    public let opening: OpeningSettings?
     public let notifications: NotificationSettings?
     public let review: ReviewSettings?
     public let launcher: LauncherSettings?
@@ -39,7 +40,6 @@ public struct AndroidRules: Codable, Sendable {
 public struct LauncherSettings: Codable, Sendable, Equatable {
     public let distracting: [String]?
     public let hidden: [String]?
-    public let pauseSeconds: Int?
 }
 
 public struct MacRules: Codable, Sendable {
@@ -63,6 +63,20 @@ public struct ScrollSettings: Codable, Sendable, Equatable {
         growth = try container.decodeIfPresent(Double.self, forKey: .growth) ?? growth
         maxPauseSeconds = try container.decodeIfPresent(Int.self, forKey: .maxPauseSeconds) ?? maxPauseSeconds
         resetMinutes = try container.decodeIfPresent(Int.self, forKey: .resetMinutes) ?? resetMinutes
+    }
+}
+
+/// docs/rules.md "Opening check (Android)". A missing field takes its default, as on every platform.
+public struct OpeningSettings: Codable, Sendable, Equatable {
+    public var awayMinutes = 5
+    public var quickMinutes = 2
+
+    public init() {}
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        awayMinutes = try container.decodeIfPresent(Int.self, forKey: .awayMinutes) ?? awayMinutes
+        quickMinutes = try container.decodeIfPresent(Int.self, forKey: .quickMinutes) ?? quickMinutes
     }
 }
 

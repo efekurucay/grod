@@ -44,18 +44,7 @@ class ExportReceiver : BroadcastReceiver() {
         val json = if (!Permissions.usageAccess(context)) {
             Usage.toJson(now, emptyMap(), error = "usage access not granted")
         } else {
-            val events = ArrayList<UsageEvent>()
-            val query = context.getSystemService(UsageStatsManager::class.java).queryEvents(from, now)
-            val e = UsageEvents.Event()
-            while (query.getNextEvent(e)) {
-                @Suppress("DEPRECATION")
-                when (e.eventType) {
-                    UsageEvents.Event.MOVE_TO_FOREGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, UsageEvent.Kind.FOREGROUND))
-                    UsageEvents.Event.MOVE_TO_BACKGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, UsageEvent.Kind.BACKGROUND))
-                    SCREEN_NON_INTERACTIVE -> events.add(UsageEvent(e.packageName.orEmpty(), e.timeStamp, UsageEvent.Kind.SCREEN_OFF))
-                }
-            }
-            Usage.toJson(now, Usage.foregroundByDay(events, now, zone))
+            Usage.toJson(now, Usage.foregroundByDay(context.usageEvents(from, now), now, zone))
         }
         dir.mkdirs()
         val tmp = File(dir, "usage.json.tmp")
@@ -65,9 +54,25 @@ class ExportReceiver : BroadcastReceiver() {
 
     private companion object {
         const val ACTION_EXPORT = "dev.grod.EXPORT"
-
-        /** UsageEvents.Event.SCREEN_NON_INTERACTIVE, public from API 28; minSdk is 26, where it never appears. */
-        const val SCREEN_NON_INTERACTIVE = 16
         const val ACTION_CLEAR = "dev.grod.EXPORT_CLEAR"
     }
+}
+
+/** UsageEvents.Event.SCREEN_NON_INTERACTIVE, public from API 28; minSdk is 26, where it never appears. */
+private const val SCREEN_NON_INTERACTIVE = 16
+
+/** Apps coming to the front, leaving it and the screen turning off in [from]..[to], in time order. Needs usage access. */
+fun Context.usageEvents(from: Long, to: Long): List<UsageEvent> {
+    val events = ArrayList<UsageEvent>()
+    val query = getSystemService(UsageStatsManager::class.java).queryEvents(from, to)
+    val e = UsageEvents.Event()
+    while (query.getNextEvent(e)) {
+        @Suppress("DEPRECATION")
+        when (e.eventType) {
+            UsageEvents.Event.MOVE_TO_FOREGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, UsageEvent.Kind.FOREGROUND, e.className))
+            UsageEvents.Event.MOVE_TO_BACKGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, UsageEvent.Kind.BACKGROUND, e.className))
+            SCREEN_NON_INTERACTIVE -> events.add(UsageEvent(e.packageName.orEmpty(), e.timeStamp, UsageEvent.Kind.SCREEN_OFF))
+        }
+    }
+    return events
 }

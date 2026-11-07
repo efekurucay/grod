@@ -60,8 +60,10 @@ class ScrollPauseActivity : Activity() {
                 setPadding(0, ui.dp(8), 0, 0)
             })
         }
-        val scrolled = ScrollSession.label(intent.getLongExtra(EXTRA_SCROLLED_MS, 0))
-        page.addView(ui.muted("Scrolled $scrolled in this session.", 16f).apply {
+        // A quick opening whose window is over says what the app was opened for instead of the scroll time.
+        val line = intent.getStringExtra(EXTRA_REASON)?.let { "$it." }
+            ?: "Scrolled ${ScrollSession.label(intent.getLongExtra(EXTRA_SCROLLED_MS, 0))} in this session."
+        page.addView(ui.muted(line, 16f).apply {
             gravity = Gravity.CENTER
             setPadding(0, ui.dp(16), 0, ui.dp(32))
         })
@@ -135,6 +137,7 @@ class ScrollPauseActivity : Activity() {
         const val EXTRA_PKG = "pkg"
         const val EXTRA_TITLE = "title"
         const val EXTRA_WHY = "why"
+        const val EXTRA_REASON = "reason"
         const val EXTRA_SECONDS = "seconds"
         const val EXTRA_SCROLLED_MS = "scrolledMs"
         private const val K_ENDS_AT = "endsAt"

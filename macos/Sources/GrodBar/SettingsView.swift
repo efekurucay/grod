@@ -15,6 +15,7 @@ struct SettingsView: View {
                 phoneStatus
                 rulesSection
                 scrollSection
+                openingSection
                 notificationsSection
                 launcherSection
                 reviewSection
@@ -98,6 +99,26 @@ struct SettingsView: View {
         }
     }
 
+    private var openingSection: some View {
+        GrodSection("Opening check", error: model.errors[.opening], note: model.notes[.opening]) {
+            Row {
+                RowText("Ask again after", meta: "When Instagram or another distracting app opens after this long away, the phone asks what it is for.")
+            } end: {
+                MenuPicker(selection: Binding(get: { model.opening.awayMinutes }, set: { model.setAwayMinutes($0) }),
+                           options: Self.options([1, 2, 5, 10, 15, 30, 60], including: model.opening.awayMinutes),
+                           label: { Self.durationLabel($0 * 60) })
+            }
+            RowDivider()
+            Row {
+                RowText("First quick window", meta: "How long Message and Look something up last until grod has learned your own.")
+            } end: {
+                MenuPicker(selection: Binding(get: { model.opening.quickMinutes }, set: { model.setQuickMinutes($0) }),
+                           options: Self.options([1, 2, 3, 5, 10], including: model.opening.quickMinutes),
+                           label: { Self.durationLabel($0 * 60) })
+            }
+        }
+    }
+
     private var notificationsSection: some View {
         GrodSection("Notifications on the phone", trailing: model.phone.short, error: model.errors[.notifications], note: model.notes[.notifications]) {
             Row {
@@ -171,15 +192,6 @@ struct SettingsView: View {
 
     private var launcherSection: some View {
         GrodSection("Launcher on the phone", error: model.errors[.launcher], note: model.notes[.launcher]) {
-            Row {
-                RowText("Pause before a distracting app", meta: "You can back out while it counts down. 0 turns it off.")
-            } end: {
-                Stepper(value: Binding(get: { model.pauseSeconds }, set: { model.setPauseSeconds($0) }), in: 0...60) {
-                    Text(model.pauseSeconds == 0 ? "Off" : "\(model.pauseSeconds) s").monospacedDigit()
-                }
-                .fixedSize()
-            }
-            RowDivider()
             Row {
                 RowText("Ask before opening", meta: Self.ruleAppsNote(model.ruleApps))
             } end: { EmptyView() }

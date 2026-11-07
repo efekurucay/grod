@@ -7,7 +7,7 @@ import Observation
 @MainActor
 @Observable
 final class SettingsModel {
-    enum Section: Hashable { case rules, scroll, notifications, launcher, review }
+    enum Section: Hashable { case rules, scroll, opening, notifications, launcher, review }
 
     struct RuleRow: Identifiable, Equatable {
         let id: String
@@ -19,13 +19,13 @@ final class SettingsModel {
 
     private(set) var rules: [RuleRow] = []
     private(set) var scroll = ScrollSettings()
+    private(set) var opening = OpeningSettings()
     private(set) var notificationsEnabled = false
     private(set) var deliverEvery = 60
     /// Nil while delivering every `deliverEvery` minutes.
     private(set) var deliverAt: [String]?
     private(set) var allow: [NotificationAllow] = []
     private(set) var keepDays = 30
-    private(set) var pauseSeconds = 10
     private(set) var distracting: [String] = []
     private(set) var hidden: [String] = []
     private(set) var ruleApps: [(rule: String, package: String)] = []
@@ -46,7 +46,6 @@ final class SettingsModel {
     @ObservationIgnored private let setSafariGuard: (Bool) -> Void
     @ObservationIgnored private var queue: Task<Void, Never>?
     @ObservationIgnored private var pending = 0
-    @ObservationIgnored private var pauseWrite: Task<Void, Never>?
     private var safariEnabled: Bool
 
     init(store: RulesStore, cli: GrodCLI, safariGuard: Bool, setSafariGuard: @escaping (Bool) -> Void) {
@@ -62,6 +61,7 @@ final class SettingsModel {
         guard pending == 0, let document = store.snapshot?.document else { return }
         rules = document.rules.map { RuleRow(id: $0.id, title: $0.title, enabled: $0.enabled) }
         scroll = document.scroll ?? ScrollSettings()
+        opening = document.opening ?? OpeningSettings()
         // The CLI fills a missing `notifications` with the same defaults on its first edit.
         let notifications = document.notifications
         notificationsEnabled = notifications?.enabled ?? false
@@ -69,7 +69,6 @@ final class SettingsModel {
         deliverAt = notifications?.deliverAt
         allow = notifications?.allow ?? (notifications == nil ? [.init(category: "event"), .init(category: "reminder")] : [])
         keepDays = notifications?.keepDays ?? 30
-        pauseSeconds = document.launcher?.pauseSeconds ?? 10
         distracting = document.launcher?.distracting ?? []
         hidden = document.launcher?.hidden ?? []
         ruleApps = document.launcherRuleApps
@@ -108,6 +107,16 @@ final class SettingsModel {
     func setResetMinutes(_ minutes: Int) {
         scroll.resetMinutes = minutes
         run(["scroll", "reset", String(minutes)], in: .scroll)
+    }
+
+    func setAwayMinutes(_ minutes: Int) {
+        opening.awayMinutes = minutes
+        run(["opening", "away", String(minutes)], in: .opening)
+    }
+
+    func setQuickMinutes(_ minutes: Int) {
+        opening.quickMinutes = minutes
+        run(["opening", "quick", String(minutes)], in: .opening)
     }
 
     func setNotifications(_ enabled: Bool) {
@@ -156,17 +165,6 @@ final class SettingsModel {
         guard let argument = entry.cliArgument else { return }
         allow.removeAll { $0 == entry }
         run(["notifications", "disallow", argument], in: .notifications)
-    }
-
-    /// Stepper clicks settle first, so one CLI run (and one phone push) carries the final value.
-    func setPauseSeconds(_ seconds: Int) {
-        pauseSeconds = seconds
-        pauseWrite?.cancel()
-        pauseWrite = Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            run(["launcher", "pause", String(seconds)], in: .launcher)
-        }
     }
 
     func addDistracting(_ input: String) {

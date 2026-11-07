@@ -111,6 +111,22 @@ class ScrollSessionTest {
     }
 
     @Test
+    fun pauseNowTakesTheNextLengthAndCounts() {
+        val session = ScrollSession()
+        session.scroll(0, defaults)
+        session.scroll(20_000, defaults)
+        // A quick window ran out: the pause comes at once, at the session's next length.
+        assertEquals(10, session.pauseNow(21_000, defaults))
+        // Scroll time starts again from 0 and the next pause is longer.
+        val (next, at) = scrollUntilPause(session, 22_000)
+        assertEquals(20, next)
+        assertEquals(81_000L, at)
+        assertEquals(40, session.pauseNow(at + 1_000, defaults))
+        // After resetMinutes without scrolling it starts over like any pause.
+        assertEquals(10, session.pauseNow(at + 1_000 + 15 * 60_000, defaults))
+    }
+
+    @Test
     fun labelsScrollTime() {
         assertEquals("40 s", ScrollSession.label(40_000))
         assertEquals("1 min", ScrollSession.label(60_000))

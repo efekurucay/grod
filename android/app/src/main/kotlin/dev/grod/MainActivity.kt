@@ -237,6 +237,11 @@ class MainActivity : Activity() {
                 ui.kv(body, "Continued", "${p.continued}")
             }
         }
+        if (p != null) {
+            val answers = Purpose.entries.mapNotNull { purpose -> p.openings[purpose]?.let { "${purpose.short} $it" } } +
+                listOfNotNull(p.openingsLeft.takeIf { it > 0 }?.let { "Left $it" })
+            ui.kv(body, "Openings", answers.joinToString(" · ").ifEmpty { "None" })
+        }
         val s = store.rules.notifications
         if (s != null && s.enabled) {
             val now = System.currentTimeMillis()
@@ -271,6 +276,7 @@ class MainActivity : Activity() {
                 "up to ${s.maxPauseSeconds} s. Starts over after ${s.resetMinutes} min without scrolling.",
             15f,
         ).apply { setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12)) })
+        openingCheck()
         val body = ui.section(appsBody, "Scrolling counts in")
         for (rule in store.rules.rules) {
             val meta = if (rule.android != null) "paused ${store.fireCount(rule.id)}×" else "not on Android"
@@ -278,6 +284,36 @@ class MainActivity : Activity() {
             ui.row(body, rule.title, meta, end, off = !rule.enabled)
         }
         if (store.rules.rules.isEmpty()) ui.row(body, "No rules yet", off = true)
+    }
+
+    /** The opening check's settings and, per purpose, what it has learned in the last 14 days. */
+    private fun openingCheck() {
+        val o = store.rules.opening
+        val body = ui.section(appsBody, "Opening check")
+        val usage = Permissions.usageAccess(this)
+        val about = if (usage) {
+            "After ${o.awayMinutes} min away, a distracting app asks what it is for. Message and Look something up open at once " +
+                "for a window (${o.quickMinutes} min until learned); Browse waits like a scroll pause, longer with each Browse today."
+        } else {
+            "Needs usage access to tell when a distracting app opens."
+        }
+        body.addView(ui.muted(about, 15f).apply { setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(4)) })
+        val memory = OpeningStore.get(this).memory
+        val now = System.currentTimeMillis()
+        for (purpose in Purpose.entries) {
+            val past = memory.past(purpose)
+            val recent = Opening.recent(past, now).size
+            val meta = if (purpose.quick) {
+                val over = Opening.overrun(past, now)
+                val window = Opening.windowMs(past, now, o) / 60_000
+                "window $window min · " + if (recent == 0) "no sessions yet" else "${over.overran} of ${over.total} ran over" +
+                    if (over.lost) " · waits like Browse" else ""
+            } else {
+                val wait = Opening.waitSeconds(memory.browsesOn(LocalDate.now()), store.rules.scroll)
+                "$recent ${if (recent == 1) "session" else "sessions"} · next wait $wait s"
+            }
+            ui.row(body, purpose.short, meta)
+        }
     }
 
     private fun settingsPage() {
@@ -346,7 +382,7 @@ class MainActivity : Activity() {
                 Permissions.notificationAccess(this), settings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)),
             Step("Do Not Disturb access", "Keeps the phone quiet while notifications wait. Calls still ring.",
                 Permissions.dndAccess(this), settings(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)),
-            Step("Usage access", "Screen time per app, for your own review.",
+            Step("Usage access", "Tells when a distracting app opens anew, and screen time for your own review.",
                 Permissions.usageAccess(this), settings(Settings.ACTION_USAGE_ACCESS_SETTINGS)),
         )
         // Android 13+ asks before an app may post; grod only posts the weekly review reminder.
@@ -411,7 +447,7 @@ class MainActivity : Activity() {
         ui.kv(body, "Home screen", if (isHome) "grod" else "Another app")
         body.addView(ui.column().apply {
             setPadding(ui.dp(12), ui.dp(4), ui.dp(12), ui.dp(12))
-            addView(ui.muted("Optional. Apps as a calm text list; distracting ones last and behind a pause.", 15f).apply {
+            addView(ui.muted("Optional. Apps as a calm word cloud; distracting ones small and quiet.", 15f).apply {
                 setPadding(0, 0, 0, ui.dp(12))
             })
             addView(ui.button("Choose home app") { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) },

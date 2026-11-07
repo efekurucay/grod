@@ -15,6 +15,7 @@ Works from any folder: it needs only the grod MCP tools (or the `grod` command).
    - Which apps send the most notifications, and at what hours.
    - Which apps take the most screen time.
    - Which rules pause the user most, and how often they leave versus continue after a pause (`events`: `paused`, `left`, `continued`). Many pauses with "continued" means the pause is too short to break the loop: suggest a lower `freeSeconds` or a higher `growth`. Mostly "left" means it works.
+   - The opening check (`openings` in `phone_stats`): how often each purpose was given and how long those sessions lasted. A purpose whose sessions run far past a couple of minutes is the user's "just a message" turning into browsing; say it with the numbers. To change how soon it asks again or the first quick window, use `set_opening_check`.
    - Distracting apps with a lot of screen time but few pauses: time spent watching, not scrolling. That is outside what grod does; say so rather than inventing a rule.
    - Notifications that were held but are clearly urgent for the user, which belong in `allow`.
 4. Propose at most three changes, each with the number behind it. For example: "Instagram took 9 h this week and paused you 60 times, and you continued 50 of them: pause after 30 s instead of 60?" Apply a change only after the user agrees, with the grod tools (`set_scroll_pause`, `upsert_rule`, `allow_notifications`, `set_notification_batching`). Every edit pushes itself to all devices.

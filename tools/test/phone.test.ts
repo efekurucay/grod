@@ -17,6 +17,8 @@ const logs = {
     { t: now, rule: 'instagram', pkg: 'com.instagram.android', action: 'left' },
     { t: now, rule: 'instagram', pkg: 'com.instagram.android', action: 'paused' },
     { t: now, rule: 'youtube', pkg: 'com.google.android.youtube', action: 'paused' },
+    { t: now, rule: 'instagram', pkg: 'com.instagram.android', action: 'opening', purpose: 'message' },
+    { t: now, rule: 'instagram', pkg: 'com.instagram.android', action: 'session', purpose: 'message', ms: 180_000 },
   ],
 };
 
@@ -26,7 +28,8 @@ test('summarize counts per app, held, withdrawn and actions per rule', () => {
   assert.equal(s.notifications.held, 3);
   assert.deepEqual(s.notifications.topApps[0], { app: 'WhatsApp', count: 2, held: 2 });
   assert.equal(s.notifications.withdrawnByApp, 1);
-  assert.deepEqual(s.ruleActions[0], { rule: 'instagram', paused: 2, left: 1 });
+  assert.deepEqual(s.ruleActions[0], { rule: 'instagram', paused: 2, left: 1, opening: 1, session: 1 });
+  assert.deepEqual(s.openings, [{ purpose: 'message', openings: 1, sessions: 1, medianMinutes: 3 }]);
   assert.deepEqual(s.screenTimeMinutes, [{ pkg: 'com.instagram.android', minutes: 60 }]);
 });
 

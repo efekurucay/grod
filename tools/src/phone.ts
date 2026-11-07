@@ -13,7 +13,7 @@ export type NotificationEvent = {
   held?: boolean;
   reason?: string;
 };
-export type RuleEvent = { t: number; rule: string; pkg: string; action: string };
+export type RuleEvent = { t: number; rule: string; pkg: string; action: string; purpose?: string; ms?: number };
 export type Usage = { generated: number; days: Record<string, Record<string, number>> };
 
 const EXPORT_DIR = `/sdcard/Android/data/${ANDROID_PACKAGE}/files/export`;
@@ -123,6 +123,19 @@ export function summarize(days: number, logs: Logs, usage: Usage | null) {
     counts[e.action] = (counts[e.action] ?? 0) + 1;
     actions.set(e.rule, counts);
   }
+  // docs/rules.md "Opening check": what openings were for and how long those sessions lasted.
+  const purposes = new Map<string, { openings: number; minutes: number[] }>();
+  for (const e of logs.events) {
+    if (!e.purpose || (e.action !== 'opening' && e.action !== 'session')) continue;
+    const p = purposes.get(e.purpose) ?? { openings: 0, minutes: [] };
+    if (e.action === 'opening') p.openings++;
+    else if (typeof e.ms === 'number') p.minutes.push(e.ms / 60_000);
+    purposes.set(e.purpose, p);
+  }
+  const median = (xs: number[]) => {
+    const v = [...xs].sort((a, b) => a - b);
+    return v.length ? Math.round(v[Math.floor(v.length / 2)] * 10) / 10 : null;
+  };
   const deleted = logs.notifications.filter((n) => n.e === 'removed' && n.reason === 'app').length;
 
   let screenTime: [string, number][] = [];
@@ -147,6 +160,7 @@ export function summarize(days: number, logs: Logs, usage: Usage | null) {
       withdrawnByApp: deleted,
     },
     ruleActions: [...actions.entries()].map(([rule, counts]) => ({ rule, ...counts })),
+    openings: [...purposes.entries()].map(([purpose, p]) => ({ purpose, openings: p.openings, sessions: p.minutes.length, medianMinutes: median(p.minutes) })),
     screenTimeMinutes: usage ? screenTime.map(([pkg, minutes]) => ({ pkg, minutes })) : 'usage access not granted or app not reachable',
   };
 }

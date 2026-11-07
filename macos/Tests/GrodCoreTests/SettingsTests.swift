@@ -28,6 +28,16 @@ final class SettingsTests: XCTestCase {
         XCTAssertNil(try RulesSnapshot(data: Data(#"{"schemaVersion":1,"rules":[]}"#.utf8)).document.scroll)
     }
 
+    func testOpeningDefaultsWhenMissing() throws {
+        let partial = try RulesSnapshot(data: Data(#"{"schemaVersion":1,"rules":[],"opening":{"awayMinutes":15}}"#.utf8)).document
+        XCTAssertEqual(partial.opening?.awayMinutes, 15)
+        XCTAssertEqual(partial.opening?.quickMinutes, 2)
+        let empty = try RulesSnapshot(data: Data(#"{"schemaVersion":1,"rules":[],"opening":{}}"#.utf8)).document
+        XCTAssertEqual(empty.opening, OpeningSettings())
+        XCTAssertEqual(OpeningSettings().awayMinutes, 5)
+        XCTAssertNil(try RulesSnapshot(data: Data(#"{"schemaVersion":1,"rules":[]}"#.utf8)).document.opening)
+    }
+
     func testAllowArgument() {
         XCTAssertEqual(NotificationAllow(package: "com.whatsapp").cliArgument, "com.whatsapp")
         XCTAssertEqual(NotificationAllow(category: "reminder").cliArgument, "category:reminder")
@@ -94,10 +104,10 @@ final class LauncherTests: XCTestCase {
           {"id":"ig","title":"Instagram","enabled":true,"android":{"packages":["com.instagram.android"]}},
           {"id":"tt","title":"TikTok","enabled":false,"android":{"packages":["com.zhiliaoapp.musically"]}},
           {"id":"fb","title":"Facebook","enabled":true,"web":{"hosts":["facebook.com"]}}],
-         "launcher":{"distracting":["com.twitter.android"],"hidden":[],"pauseSeconds":10}}
+         "launcher":{"distracting":["com.twitter.android"],"hidden":[]}}
         """#
         let rules = try RulesSnapshot(data: Data(json.utf8)).document
-        XCTAssertEqual(rules.launcher, LauncherSettings(distracting: ["com.twitter.android"], hidden: [], pauseSeconds: 10))
+        XCTAssertEqual(rules.launcher, LauncherSettings(distracting: ["com.twitter.android"], hidden: []))
         XCTAssertEqual(rules.launcherRuleApps.map { "\($0.rule): \($0.package)" }, ["Instagram: com.instagram.android"])
     }
 }

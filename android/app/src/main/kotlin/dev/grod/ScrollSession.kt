@@ -32,13 +32,7 @@ class ScrollSession {
     /** Counts one scroll event; returns the pause length in seconds when a pause is due. */
     fun scroll(now: Long, settings: ScrollSettings): Int? {
         if (paused) return null
-        var last = lastScrollAt
-        if (last != null && now - last >= settings.resetMinutes * 60_000L) {
-            sessionMs = 0
-            sincePauseMs = 0
-            pauses = 0
-            last = null
-        }
+        val last = resetIfIdle(now, settings)
         // The first scroll of a session adds nothing; a swipe after watching for a while adds only the cap,
         // so watching does not count as scrolling.
         val added = if (last == null) 0L else min(now - last, MAX_STEP_MS).coerceAtLeast(0)
@@ -46,6 +40,30 @@ class ScrollSession {
         sessionMs += added
         sincePauseMs += added
         if (sincePauseMs < settings.freeSeconds * 1000L) return null
+        return nextPause(settings)
+    }
+
+    /**
+     * A pause due now whatever the scroll time, when a quick opening's window is over (docs/rules.md,
+     * "Opening check"). It counts like any other pause, so the next one is longer.
+     */
+    fun pauseNow(now: Long, settings: ScrollSettings): Int {
+        resetIfIdle(now, settings)
+        lastScrollAt = now
+        return nextPause(settings)
+    }
+
+    /** Starts the session over after resetMinutes without scrolling; returns the last scroll time that still counts. */
+    private fun resetIfIdle(now: Long, settings: ScrollSettings): Long? {
+        val last = lastScrollAt
+        if (last == null || now - last < settings.resetMinutes * 60_000L) return last
+        sessionMs = 0
+        sincePauseMs = 0
+        pauses = 0
+        return null
+    }
+
+    private fun nextPause(settings: ScrollSettings): Int {
         sincePauseMs = 0
         val seconds = min(settings.firstPauseSeconds * settings.growth.pow(pauses), settings.maxPauseSeconds.toDouble())
         pauses++

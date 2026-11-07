@@ -7,14 +7,9 @@ import java.util.Locale
 data class LauncherSettings(
     val distracting: List<String> = emptyList(),
     val hidden: List<String> = emptyList(),
-    val pauseSeconds: Int = DEFAULT_PAUSE,
     /** Open-Meteo weather next to the date; off means no location prompt and no network. */
     val weather: Boolean = false,
-) {
-    companion object {
-        const val DEFAULT_PAUSE = 10
-    }
-}
+)
 
 /** One launchable activity. [component] is the activity class. */
 data class AppEntry(val pkg: String, val component: String, val label: String)

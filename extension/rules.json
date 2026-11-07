@@ -135,6 +135,10 @@
     "maxPauseSeconds": 300,
     "resetMinutes": 15
   },
+  "opening": {
+    "awayMinutes": 5,
+    "quickMinutes": 2
+  },
   "notifications": {
     "enabled": true,
     "deliverEvery": 60,
@@ -161,8 +165,7 @@
   },
   "launcher": {
     "distracting": [],
-    "hidden": [],
-    "pauseSeconds": 10
+    "hidden": []
   },
-  "revision": "b3225915f52c"
+  "revision": "83a3f725fc1d"
 }

@@ -5,8 +5,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 import org.json.JSONObject
 
-/** From UsageStatsManager: an app coming to the front, leaving it, or the screen turning off ([pkg] unused). */
-data class UsageEvent(val pkg: String, val time: Long, val kind: Kind) {
+/**
+ * From UsageStatsManager: an app coming to the front, leaving it, or the screen turning off ([pkg]
+ * unused). [cls] is the activity, where the event names one.
+ */
+data class UsageEvent(val pkg: String, val time: Long, val kind: Kind, val cls: String? = null) {
     enum class Kind { FOREGROUND, BACKGROUND, SCREEN_OFF }
 }
 

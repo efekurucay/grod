@@ -25,8 +25,9 @@ object LogLines {
     fun removed(t: Long, pkg: String, title: String?, reason: String): String =
         JSONObject().put("t", t).put("e", "removed").put("pkg", pkg).putOpt("title", title).put("reason", reason).toString()
 
-    fun event(t: Long, rule: String, pkg: String, action: String): String =
-        JSONObject().put("t", t).put("rule", rule).put("pkg", pkg).put("action", action).toString()
+    fun event(t: Long, rule: String, pkg: String, action: String, purpose: String? = null, ms: Long? = null): String =
+        JSONObject().put("t", t).put("rule", rule).put("pkg", pkg).put("action", action)
+            .putOpt("purpose", purpose).putOpt("ms", ms).toString()
 }
 
 /** Which log files to compress and delete; pure, so pruning is unit tested. */
