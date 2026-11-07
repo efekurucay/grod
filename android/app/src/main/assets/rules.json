@@ -146,7 +146,14 @@
         "category": "reminder"
       }
     ],
-    "keepDays": 30
+    "keepDays": 30,
+    "deliverAt": [
+      "08:30",
+      "12:30",
+      "15:30",
+      "18:30",
+      "21:30"
+    ]
   },
   "review": {
     "weekday": 7,
@@ -157,5 +164,5 @@
     "hidden": [],
     "pauseSeconds": 10
   },
-  "revision": "4c4b4a005b79"
+  "revision": "b3225915f52c"
 }
