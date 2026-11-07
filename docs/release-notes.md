@@ -1,3 +1,11 @@
+## What's new
+
+- **grod launcher (Android):** a calm home screen. Clock, date and search on top; the apps you used in the last 14 days as a word cloud sized by use. Distracting apps stay small and open after a short pause you can back out of.
+- **Nothing on screen is darkened.** Tabs and thumbnails stay as the app draws them; grod leaves a Reels or Shorts feed the moment it opens.
+- **One reel at a time** for a reel someone sends you, your own reels and reels from accounts you follow. Opening one no longer bounces right back; swiping to the next one does.
+- **Screen time** counts one app at a time and stops when the screen turns off, so weekly reviews no longer show hours of an app that was closed.
+- **Wireless adb:** the CLI and the macOS app reconnect to the phone's saved Wi-Fi address on their own.
+
 ## Install
 
 **Android** (Android 8+)
