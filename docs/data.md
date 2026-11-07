@@ -34,7 +34,7 @@ adb shell am broadcast -a dev.grod.EXPORT_CLEAR -n dev.grod/.ExportReceiver
 
 `dev.grod.EXPORT` writes into `/sdcard/Android/data/dev.grod/files/export/`:
 
-- `usage.json`: foreground time per app per local day for the last `keepDays` days, read from `UsageStatsManager` (usage access: `android/install.sh` or the app's setup list). Without usage access it has an `"error"` field and no days.
+- `usage.json`: foreground time per app per local day for the last `keepDays` days, read from `UsageStatsManager` (usage access: `android/install.sh` or the app's setup list). One app counts as in front at a time: it stops counting when another app comes to the front or the screen turns off. Without usage access it has an `"error"` field and no days.
 - `log/`: a copy of every file in `files/log/` (the logs above). The private originals stay.
 
 ```json

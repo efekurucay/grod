@@ -50,8 +50,9 @@ class ExportReceiver : BroadcastReceiver() {
             while (query.getNextEvent(e)) {
                 @Suppress("DEPRECATION")
                 when (e.eventType) {
-                    UsageEvents.Event.MOVE_TO_FOREGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, true))
-                    UsageEvents.Event.MOVE_TO_BACKGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, false))
+                    UsageEvents.Event.MOVE_TO_FOREGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, UsageEvent.Kind.FOREGROUND))
+                    UsageEvents.Event.MOVE_TO_BACKGROUND -> events.add(UsageEvent(e.packageName, e.timeStamp, UsageEvent.Kind.BACKGROUND))
+                    SCREEN_NON_INTERACTIVE -> events.add(UsageEvent(e.packageName.orEmpty(), e.timeStamp, UsageEvent.Kind.SCREEN_OFF))
                 }
             }
             Usage.toJson(now, Usage.foregroundByDay(events, now, zone))
@@ -64,6 +65,9 @@ class ExportReceiver : BroadcastReceiver() {
 
     private companion object {
         const val ACTION_EXPORT = "dev.grod.EXPORT"
+
+        /** UsageEvents.Event.SCREEN_NON_INTERACTIVE, public from API 28; minSdk is 26, where it never appears. */
+        const val SCREEN_NON_INTERACTIVE = 16
         const val ACTION_CLEAR = "dev.grod.EXPORT_CLEAR"
     }
 }

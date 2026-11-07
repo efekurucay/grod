@@ -5,15 +5,21 @@ import java.time.LocalDate
 import java.time.ZoneId
 import org.json.JSONObject
 
-/** An app coming to the front ([foreground]) or leaving it, from UsageStatsManager events. */
-data class UsageEvent(val pkg: String, val time: Long, val foreground: Boolean)
+/** From UsageStatsManager: an app coming to the front, leaving it, or the screen turning off ([pkg] unused). */
+data class UsageEvent(val pkg: String, val time: Long, val kind: Kind) {
+    enum class Kind { FOREGROUND, BACKGROUND, SCREEN_OFF }
+}
 
 /** Foreground time per app per local day (docs/data.md, "Export"); pure, so it is unit tested. */
 object Usage {
-    /** [events] in time order. An app still in front at [end] counts until [end]. */
+    /**
+     * [events] in time order. One app is in front at a time: another app coming to the front or the screen
+     * turning off ends the current one, since a force-stopped app or a locked screen sends no BACKGROUND.
+     * An app still in front at [end] counts until [end].
+     */
     fun foregroundByDay(events: List<UsageEvent>, end: Long, zone: ZoneId): Map<LocalDate, Map<String, Long>> {
         val days = sortedMapOf<LocalDate, MutableMap<String, Long>>()
-        val since = HashMap<String, Long>()
+        var current: Pair<String, Long>? = null
         fun add(pkg: String, from: Long, to: Long) {
             var start = from
             while (start < to) {
@@ -25,14 +31,21 @@ object Usage {
                 start = stop
             }
         }
+        fun close(at: Long) {
+            current?.let { (pkg, from) -> add(pkg, from, at) }
+            current = null
+        }
         for (e in events) {
-            if (e.foreground) {
-                since.putIfAbsent(e.pkg, e.time)
-            } else {
-                since.remove(e.pkg)?.let { add(e.pkg, it, e.time) }
+            when (e.kind) {
+                UsageEvent.Kind.FOREGROUND -> if (current?.first != e.pkg) {
+                    close(e.time)
+                    current = e.pkg to e.time
+                }
+                UsageEvent.Kind.BACKGROUND -> if (current?.first == e.pkg) close(e.time)
+                UsageEvent.Kind.SCREEN_OFF -> close(e.time)
             }
         }
-        for ((pkg, from) in since) add(pkg, from, end)
+        close(end)
         return days
     }
 
