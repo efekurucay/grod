@@ -14,3 +14,7 @@ Platform copies are generated from these files; change the SVG here first.
 Always lowercase: **grod**. Products: grod for Android, grod for Chrome, grod for macOS, grod CLI.
 
 Tagline: **Get rid of distracting. Keep what matters.**
+
+## Wallpapers
+
+`python3 brand/wallpapers/build.py` renders the phone and desktop wallpapers, dark and light, into `site/wallpapers/` with headless Chrome. The landing page links them.
