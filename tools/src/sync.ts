@@ -2,8 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
-import { addChannel, normalizeHandle } from './channels.ts';
-import { load, repoRoot, revision, save, serialize, writeAtomic, type Channel } from './rules.ts';
+import { load, repoRoot, revision, serialize, writeAtomic } from './rules.ts';
 
 export const ANDROID_PACKAGE = 'dev.grod';
 /** App-specific external dir: adb can write it and the app reads it without any storage permission. */
@@ -12,16 +11,12 @@ export const ANDROID_RULES_PATH = `/sdcard/Android/data/${ANDROID_PACKAGE}/files
 /** Copies baked into each platform build. They carry the revision so devices can report what they run. */
 const bundledCopies = ['extension/rules.json', 'android/app/src/main/assets/rules.json'];
 
-/** Channels blocked from the phone's share sheet; sync folds them into the rules, then empties the file. */
-export const ANDROID_CHANNELS_PATH = `/sdcard/Android/data/${ANDROID_PACKAGE}/files/channels-added.json`;
-
-export type SyncReport = { revision: string; wrote: string[]; adb: string; pulledChannels: string[] };
+export type SyncReport = { revision: string; wrote: string[]; adb: string };
 
 export function sync({ adb: wanted = true } = {}): SyncReport {
   // GROD_ADB=0 wins over every caller, so test copies of the rules can never reach a real phone.
   const adb = wanted && process.env.GROD_ADB !== '0';
   const devices = adb ? phones() : [];
-  const pulledChannels = devices.length ? pullChannels(devices) : [];
   const file = load();
   const rev = revision();
   const compiled = serialize({ ...file, revision: rev } as typeof file);
@@ -34,7 +29,7 @@ export function sync({ adb: wanted = true } = {}): SyncReport {
     writeAtomic(path, compiled);
     wrote.push(relative(repoRoot, path));
   }
-  return { revision: rev, wrote, adb: adb ? pushToPhone(compiled, devices) : 'skipped', pulledChannels };
+  return { revision: rev, wrote, adb: adb ? pushToPhone(compiled, devices) : 'skipped' };
 }
 
 function readySerials(): string[] {
@@ -80,37 +75,6 @@ function phones(): string[] {
     seen.add(id);
     return true;
   });
-}
-
-function pullChannels(devices: string[]): string[] {
-  const file = load();
-  const added: string[] = [];
-  for (const serial of devices) {
-    let channels: Channel[];
-    try {
-      const raw = execFileSync('adb', ['-s', serial, 'exec-out', 'cat', ANDROID_CHANNELS_PATH], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-      channels = JSON.parse(raw).channels ?? [];
-    } catch {
-      continue; // No file yet, or the app is not installed.
-    }
-    for (const c of channels) {
-      if (typeof c?.name === 'string' && typeof c?.handle === 'string' && addChannel(file, c)) added.push(`${c.name} (${normalizeHandle(c.handle)})`);
-    }
-  }
-  if (added.length) save(file);
-  // Emptied only after the rules hold them, so a failed save never loses a channel.
-  const tmp = join(repoRoot, 'android/.channels-empty.json');
-  mkdirSync(dirname(tmp), { recursive: true });
-  writeAtomic(tmp, '{"channels":[]}\n');
-  for (const serial of devices) {
-    try {
-      execFileSync('adb', ['-s', serial, 'shell', 'test', '-f', ANDROID_CHANNELS_PATH], { stdio: 'ignore' });
-      execFileSync('adb', ['-s', serial, 'push', tmp, ANDROID_CHANNELS_PATH], { stdio: 'ignore' });
-    } catch {
-      // No file on this phone: nothing to empty.
-    }
-  }
-  return added;
 }
 
 function pushToPhone(compiled: string, devices: string[]): string {

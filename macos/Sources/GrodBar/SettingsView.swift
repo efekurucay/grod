@@ -4,7 +4,6 @@ import SwiftUI
 /// grod UI (ui/README.md) in SwiftUI: warm neutrals, color only for state, no shadows, color-only motion.
 struct SettingsView: View {
     @Bindable var model: SettingsModel
-    @State private var channelInput = ""
     @State private var allowKind = AllowKind.package
     @State private var allowInput = ""
     @State private var newTime = "12:00"
@@ -15,8 +14,8 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 24) {
                 phoneStatus
                 rulesSection
+                scrollSection
                 notificationsSection
-                channelsSection
                 launcherSection
                 reviewSection
                 safariSection
@@ -51,6 +50,50 @@ struct SettingsView: View {
                 } end: {
                     GrodSwitch(rule.title, isOn: Binding(get: { rule.enabled }, set: { model.setRule(rule.id, enabled: $0) }))
                 }
+            }
+        }
+    }
+
+    private var scrollSection: some View {
+        GrodSection("Scroll pause", error: model.errors[.scroll], note: model.notes[.scroll]) {
+            Row {
+                RowText("Free scrolling", meta: "In the apps and sites of the rules above, before each pause.")
+            } end: {
+                MenuPicker(selection: Binding(get: { model.scroll.freeSeconds }, set: { model.setFreeSeconds($0) }),
+                           options: Self.options([30, 60, 120, 180, 300, 600, 900, 1800], including: model.scroll.freeSeconds),
+                           label: Self.durationLabel)
+            }
+            RowDivider()
+            Row {
+                RowText("First pause")
+            } end: {
+                MenuPicker(selection: Binding(get: { model.scroll.firstPauseSeconds }, set: { model.setFirstPause($0) }),
+                           options: Self.options([5, 10, 15, 20, 30, 60], including: model.scroll.firstPauseSeconds),
+                           label: Self.durationLabel)
+            }
+            RowDivider()
+            Row {
+                RowText("Growth", meta: "Each pause is this many times longer than the last.")
+            } end: {
+                MenuPicker(selection: Binding(get: { model.scroll.growth }, set: { model.setGrowth($0) }),
+                           options: Self.options([1, 1.5, 2, 3], including: model.scroll.growth),
+                           label: { "×" + $0.formatted() })
+            }
+            RowDivider()
+            Row {
+                RowText("Longest pause")
+            } end: {
+                MenuPicker(selection: Binding(get: { model.scroll.maxPauseSeconds }, set: { model.setMaxPause($0) }),
+                           options: Self.options([60, 120, 180, 300, 600, 900, 1800], including: model.scroll.maxPauseSeconds),
+                           label: Self.durationLabel)
+            }
+            RowDivider()
+            Row {
+                RowText("Reset after", meta: "Without scrolling, pauses start short again.")
+            } end: {
+                MenuPicker(selection: Binding(get: { model.scroll.resetMinutes }, set: { model.setResetMinutes($0) }),
+                           options: Self.options([5, 10, 15, 30, 60, 120], including: model.scroll.resetMinutes),
+                           label: { Self.durationLabel($0 * 60) })
             }
         }
     }
@@ -122,30 +165,6 @@ struct SettingsView: View {
                 }
             } end: {
                 GrodButton("Allow", action: addAllow).disabled(allowEntry == nil)
-            }
-        }
-    }
-
-    private var channelsSection: some View {
-        GrodSection("Blocked YouTube channels", error: model.errors[.channels], note: model.notes[.channels]) {
-            if model.channels.isEmpty {
-                Row { Text("No channels blocked.").foregroundStyle(GrodColor.mutedForeground) } end: { EmptyView() }
-                RowDivider()
-            }
-            ForEach(model.channels, id: \.handle) { channel in
-                Row {
-                    RowText(channel.name, meta: channel.handle)
-                } end: {
-                    GrodButton("Remove", style: .ghost) { model.removeChannel(channel) }
-                }
-                RowDivider()
-            }
-            Row {
-                GrodTextField("Channel or video link, or @handle", text: $channelInput, onSubmit: addChannel)
-                    .disabled(model.addingChannel)
-            } end: {
-                GrodButton(model.addingChannel ? "Blocking…" : "Block", action: addChannel)
-                    .disabled(model.addingChannel || channelInput.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
     }
@@ -243,10 +262,6 @@ struct SettingsView: View {
         packageInput = ""
     }
 
-    private func addChannel() {
-        model.addChannel(channelInput) { channelInput = "" }
-    }
-
     // MARK: Labels
 
     enum AllowKind: CaseIterable, Hashable {
@@ -274,7 +289,7 @@ struct SettingsView: View {
             .compactMap { $0 }.joined(separator: " · ")
     }
 
-    /// "Already included through rules: Instagram Reels (com.instagram.android), …", one entry per rule.
+    /// "Already included through rules: Instagram (com.instagram.android), …", one entry per rule.
     private static func ruleAppsNote(_ apps: [(rule: String, package: String)]) -> String? {
         guard !apps.isEmpty else { return nil }
         var order: [String] = []
@@ -284,6 +299,19 @@ struct SettingsView: View {
             packages[app.rule, default: []].append(app.package)
         }
         return "Already included through rules: " + order.map { "\($0) (\(packages[$0]!.joined(separator: ", ")))" }.joined(separator: "; ") + "."
+    }
+
+    private static func options<Value: Hashable & Comparable>(_ values: [Value], including current: Value) -> [Value] {
+        Set(values + [current]).sorted()
+    }
+
+    /// "45 s", "5 min", "1 h": the largest unit that divides evenly.
+    private static func durationLabel(_ seconds: Int) -> String {
+        switch seconds {
+        case let s where s >= 3600 && s % 3600 == 0: "\(s / 3600) h"
+        case let s where s >= 60 && s % 60 == 0: "\(s / 60) min"
+        default: "\(seconds) s"
+        }
     }
 
     private static func everyOptions(including current: Int) -> [Int] {

@@ -4,6 +4,13 @@ Raw material for articles, a video and a website post. Every grod fact below com
 
 ## Angles
 
+### 0. I blocked Reels and kept scrolling anyway
+
+grod first removed the Reels and Shorts feeds by reading the screen. The user's own data showed Instagram time rising (54 → 86 → 103 minutes a day) while grod bounced them out of Reels 45 times in one morning: the home feed had become a reel feed of its own. grod switched to counting scrolling instead of recognizing screens, with a pause that doubles each time. The piece is about measuring behavior instead of chasing an app's layout.
+
+- Research: Meinhardt 2026 (growing friction stays effective; simple pop-ups get ignored); Grüning 2023 (a delay plus a way out changes the habit).
+- grod facts: docs/rules.md "Scroll pause" (5 s cap per scroll event, 60 s free, 10 s doubling to 300 s, reset after 15 min); the Android service runs with window content access off.
+
 ### 1. Blocking Instagram doesn't last. Removing Reels might.
 
 Blocking the whole app also blocks friends' stories and DMs, so the blocker is off by Friday. grod removes only the endless feed and leaves the rest of the app. The piece walks through what that means app by app, and why "one item is fine, the next one is not" is the line it draws.
@@ -55,10 +62,10 @@ A short developer story. Channel matching broke on a YouTube handle that starts 
 ## Numbers worth quoting
 
 - Android app: about 0.9 MB, written in Kotlin, zero runtime dependencies (the debug build is 912.7 KB).
-- One rules file, six rules shipped (YouTube Shorts, Instagram Reels, TikTok, Facebook Reels, Snapchat Spotlight, YouTube channels).
-- 13 MCP tools in the grod server.
+- One rules file, seven apps shipped (Instagram, YouTube, TikTok, Facebook, Snapchat, X, LinkedIn).
+- 14 MCP tools in the grod server.
 - Rule update delays: macOS ~2 s, extension ≤ 1 min, phone on adb ~5 s, phone away ≤ 6 h.
-- Rule cooldown: 1.5 s after each action, so one feed entry triggers one action.
+- Scroll pause defaults: 60 s of scrolling free, then 10, 20, 40, 80, 160, 300 s; 15 min away starts over.
 - Notification history: 30 days by default.
 - Fitz 2019: N=237; three deliveries a day helped, hourly helped little.
 - Purohit 2023: removing the Facebook feed cut time on Facebook by 64%; a reduced feed by 39%.
@@ -70,11 +77,11 @@ A short developer story. Channel matching broke on a YouTube handle that starts 
 
 ## Demo script (60–90 s)
 
-1. **0–8 s.** Phone on screen, Instagram open. Voice: "I didn't want to delete Instagram. I wanted Reels gone."
-2. **8–20 s.** Tap the Reels tab: nothing happens, it is covered. Scroll the home feed, open a story, open DMs. Everything works.
-3. **20–30 s.** A friend's reel in DMs plays. Swipe up for the next one: grod goes Back and shows which rule acted.
-4. **30–40 s.** YouTube: the Shorts tab is covered, a Shorts thumbnail opens and closes within a second. A normal video plays.
-5. **40–55 s.** Laptop, Claude Code in the repo. Type: "Block this channel: <link>". The agent runs `grod channel add`, the rule is validated and synced. Cut to the phone and the browser: the channel's videos are gone from home and search, with no reload.
+1. **0–8 s.** Phone on screen, Instagram open. Voice: "I didn't want to delete Instagram. I wanted to stop scrolling it."
+2. **8–25 s.** Scroll the home feed. After a minute the pause screen: "Instagram · 1 min of scrolling · 10 s". Tap Leave, or wait and continue.
+3. **25–35 s.** Scroll again: the next pause is 20 s. Open a DM and a single post: no pause, that is not scrolling.
+4. **35–45 s.** Laptop, same thing on YouTube in the browser: the pause covers the page and the video stops.
+5. **45–55 s.** Claude Code in the repo: "Reddit has been pulling me in, add it." The agent writes one rule with the package and the domain; the phone and the browser pick it up with no reload.
 6. **55–70 s.** Notifications: the phone stays silent for an hour, a call still rings, then at the top of the hour all held notifications arrive together and a reply button works.
-7. **70–85 s.** Ask Claude: "What's been distracting me this week?" It reads the phone's own logs over adb and proposes up to three changes with numbers. Accept one.
-8. **85–90 s.** Close on the repo: "One rules file, a 0.9 MB app, nothing leaves the device."
+7. **70–85 s.** Ask Claude: "What's been distracting me this week?" It reads the phone's own logs over adb, shows how often you left versus continued after a pause, and proposes up to three changes with numbers. Accept one.
+8. **85–90 s.** Close on the repo: "One rules file, a small app that cannot read your screen, nothing leaves the device."

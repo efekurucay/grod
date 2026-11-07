@@ -69,21 +69,13 @@
             android:noHistory="true"
             android:taskAffinity="" />
 
-        <!-- Share target only: no UI, so it stays out of recents and history. -->
+        <!-- Scroll pause: its own task over the app, so finishing it uncovers the app; noHistory ends it when the user goes elsewhere. -->
         <activity
-            android:name=".ShareActivity"
+            android:name=".ScrollPauseActivity"
             android:excludeFromRecents="true"
-            android:exported="true"
-            android:label="@string/share_label"
+            android:exported="false"
             android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-        </activity>
+            android:taskAffinity="" />
 
         <service
             android:name=".GrodService"

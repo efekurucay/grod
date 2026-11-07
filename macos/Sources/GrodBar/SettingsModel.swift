@@ -7,7 +7,7 @@ import Observation
 @MainActor
 @Observable
 final class SettingsModel {
-    enum Section: Hashable { case rules, notifications, channels, launcher, review }
+    enum Section: Hashable { case rules, scroll, notifications, launcher, review }
 
     struct RuleRow: Identifiable, Equatable {
         let id: String
@@ -18,13 +18,13 @@ final class SettingsModel {
     static let defaultTimes = ["09:00", "13:00", "18:00"]
 
     private(set) var rules: [RuleRow] = []
+    private(set) var scroll = ScrollSettings()
     private(set) var notificationsEnabled = false
     private(set) var deliverEvery = 60
     /// Nil while delivering every `deliverEvery` minutes.
     private(set) var deliverAt: [String]?
     private(set) var allow: [NotificationAllow] = []
     private(set) var keepDays = 30
-    private(set) var channels: [YouTubeChannel] = []
     private(set) var pauseSeconds = 10
     private(set) var distracting: [String] = []
     private(set) var hidden: [String] = []
@@ -35,7 +35,6 @@ final class SettingsModel {
     /// The CLI's last line after a save ("…, phone updated."), shown for a few seconds.
     private(set) var notes: [Section: String] = [:]
     var phone = PhoneStatus.checking
-    private(set) var addingChannel = false
     var lastReview: Date?
     var safariGuard: Bool {
         get { safariEnabled }
@@ -62,6 +61,7 @@ final class SettingsModel {
     func refresh() {
         guard pending == 0, let document = store.snapshot?.document else { return }
         rules = document.rules.map { RuleRow(id: $0.id, title: $0.title, enabled: $0.enabled) }
+        scroll = document.scroll ?? ScrollSettings()
         // The CLI fills a missing `notifications` with the same defaults on its first edit.
         let notifications = document.notifications
         notificationsEnabled = notifications?.enabled ?? false
@@ -69,7 +69,6 @@ final class SettingsModel {
         deliverAt = notifications?.deliverAt
         allow = notifications?.allow ?? (notifications == nil ? [.init(category: "event"), .init(category: "reminder")] : [])
         keepDays = notifications?.keepDays ?? 30
-        channels = document.youtubeChannels
         pauseSeconds = document.launcher?.pauseSeconds ?? 10
         distracting = document.launcher?.distracting ?? []
         hidden = document.launcher?.hidden ?? []
@@ -84,6 +83,31 @@ final class SettingsModel {
         guard let index = rules.firstIndex(where: { $0.id == id }) else { return }
         rules[index].enabled = enabled
         run([enabled ? "enable" : "disable", id], in: .rules)
+    }
+
+    func setFreeSeconds(_ seconds: Int) {
+        scroll.freeSeconds = seconds
+        run(["scroll", "free", String(seconds)], in: .scroll)
+    }
+
+    func setFirstPause(_ seconds: Int) {
+        scroll.firstPauseSeconds = seconds
+        run(["scroll", "first", String(seconds)], in: .scroll)
+    }
+
+    func setGrowth(_ growth: Double) {
+        scroll.growth = growth
+        run(["scroll", "growth", String(growth)], in: .scroll)
+    }
+
+    func setMaxPause(_ seconds: Int) {
+        scroll.maxPauseSeconds = seconds
+        run(["scroll", "max", String(seconds)], in: .scroll)
+    }
+
+    func setResetMinutes(_ minutes: Int) {
+        scroll.resetMinutes = minutes
+        run(["scroll", "reset", String(minutes)], in: .scroll)
     }
 
     func setNotifications(_ enabled: Bool) {
@@ -134,22 +158,6 @@ final class SettingsModel {
         run(["notifications", "disallow", argument], in: .notifications)
     }
 
-    /// The CLI resolves a link or handle to the channel's name, so the row appears when it is done.
-    func addChannel(_ input: String, done: @escaping () -> Void) {
-        let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty else { return }
-        addingChannel = true
-        run(["channel", "add", value], in: .channels) { [weak self] ok in
-            self?.addingChannel = false
-            if ok { done() }
-        }
-    }
-
-    func removeChannel(_ channel: YouTubeChannel) {
-        channels.removeAll { $0.handle == channel.handle }
-        run(["channel", "remove", channel.handle], in: .channels)
-    }
-
     /// Stepper clicks settle first, so one CLI run (and one phone push) carries the final value.
     func setPauseSeconds(_ seconds: Int) {
         pauseSeconds = seconds
@@ -192,23 +200,20 @@ final class SettingsModel {
         }
     }
 
-    private func run(_ arguments: [String], in section: Section, finished: ((Bool) -> Void)? = nil) {
+    private func run(_ arguments: [String], in section: Section) {
         errors[section] = nil
         pending += 1
         let previous = queue
         let cli = cli
         queue = Task {
             await previous?.value
-            var ok = true
             do {
                 let output = try await cli.run(arguments)
                 if let line = output.split(whereSeparator: \.isNewline).last.map(String.init) { showNote(line, in: section) }
             } catch {
-                ok = false
                 errors[section] = error.localizedDescription
             }
             pending -= 1
-            finished?(ok)
             store.reload()
             refresh()
         }

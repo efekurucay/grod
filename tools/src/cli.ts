@@ -9,9 +9,9 @@ import {
   save,
   upsertRule,
   validate,
+  scrollDefaults,
   type Rule,
 } from './rules.ts';
-import { addChannel, listChannels, normalizeHandle, removeChannel, resolveChannel } from './channels.ts';
 import { phoneSummary, readPhone, searchNotifications } from './phone.ts';
 import { history, snapshot } from './review.ts';
 import { deliver, sync } from './sync.ts';
@@ -25,17 +25,19 @@ Usage:
   grod enable <id>
   grod disable <id>
   grod remove <id>
-  grod channel add <link|@handle> [--name N --handle @H --id UC…]
-                                hide a YouTube channel everywhere
-  grod channel remove <@handle|name>
-  grod channel list
+  grod scroll                   scroll pause settings
+  grod scroll free <seconds>    scrolling allowed before each pause
+  grod scroll first <seconds>   length of the first pause
+  grod scroll growth <number>   each pause is this many times longer
+  grod scroll max <seconds>     longest pause
+  grod scroll reset <minutes>   minutes without scrolling that start over
   grod notifications            batching settings (Android)
   grod notifications on|off
   grod notifications every <minutes>
   grod notifications at 09:00,13:00,18:00   fixed delivery times ("at off" to go back to every)
   grod notifications keep <days>
   grod notifications allow|disallow <package> | category:<c> | title:<text>
-  grod phone stats [days]       what pulled you in: notifications, rule fires, screen time
+  grod phone stats [days]       what pulled you in: notifications, scroll pauses, screen time
   grod phone search <text> [--app A] [--withdrawn] [--days N]
   grod launcher                 home screen settings (Android)
   grod launcher distracting|calm <package>   mark or unmark a distracting app
@@ -92,8 +94,8 @@ async function main(argv: string[]): Promise<void> {
       console.log(deliver());
       return;
     }
-    case 'channel':
-      return channel(argv.slice(1));
+    case 'scroll':
+      return scroll(argv.slice(1));
     case 'notifications':
       return notifications(argv.slice(1));
     case 'phone':
@@ -112,7 +114,6 @@ async function main(argv: string[]): Promise<void> {
     }
     case 'sync': {
       const report = sync({ adb: !argv.includes('--no-adb') });
-      for (const c of report.pulledChannels) console.log(`  blocked from phone: ${c}`);
       console.log(`revision ${report.revision}`);
       for (const w of report.wrote) console.log(`  wrote ${w}`);
       console.log(`  phone: ${report.adb}`);
@@ -131,34 +132,17 @@ async function main(argv: string[]): Promise<void> {
   }
 }
 
-async function channel([sub, value, ...rest]: string[]): Promise<void> {
+function scroll([sub, value]: string[]): void {
   const file = load();
-  if (sub === 'list') {
-    for (const c of listChannels(file)) console.log(`${c.enabled ? '●' : '○'} ${c.name.padEnd(28)} ${c.handle}`);
+  const keys = { free: 'freeSeconds', first: 'firstPauseSeconds', growth: 'growth', max: 'maxPauseSeconds', reset: 'resetMinutes' } as const;
+  if (!sub) {
+    console.log(JSON.stringify({ ...scrollDefaults, ...file.scroll }, null, 2));
     return;
   }
-  if (sub === 'remove') {
-    const removed = removeChannel(file, need(value, '@handle or name'));
-    if (!removed.length) throw new Error(`no blocked channel matches ${value}`);
-    save(file);
-    console.log(`unblocked ${removed.map((c) => c.name).join(', ')}.`);
-    console.log(deliver());
-    return;
-  }
-  if (sub !== 'add') throw new Error('usage: grod channel add|remove|list');
-  const args = [value, ...rest];
-  const flag = (name: string) => {
-    const i = args.indexOf(`--${name}`);
-    return i === -1 ? undefined : args[i + 1];
-  };
-  // The extension and the macOS app already know name and handle, so they skip the network lookup.
-  const name = flag('name');
-  const handle = flag('handle');
-  const id = flag('id');
-  const found = name && handle ? { name, handle, ...(id ? { id } : {}) } : await resolveChannel(need(value, 'link or @handle'));
-  const added = addChannel(file, found);
-  if (added) save(file);
-  console.log(`${added ? 'blocked' : 'already blocked'}: ${found.name} (${normalizeHandle(found.handle)}).`);
+  if (!(sub in keys)) throw new Error('usage: grod scroll [free|first|max <seconds> | growth <number> | reset <minutes>]');
+  file.scroll = { ...file.scroll, [keys[sub as keyof typeof keys]]: Number(need(value, 'number')) };
+  save(file);
+  console.log(JSON.stringify({ ...scrollDefaults, ...file.scroll }));
   console.log(deliver());
 }
 

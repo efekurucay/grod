@@ -16,6 +16,8 @@ test('every file the manifest references exists', () => {
     'blocked.html',
     'blocked.js',
     'popup.js',
+    ...manifest.web_accessible_resources.flatMap((w) => w.resources),
+    'pause.js',
   ];
   for (const file of files) assert.ok(existsSync(new URL(file, root)), file);
 });
@@ -29,7 +31,13 @@ test('Firefox build references only files it contains', () => {
   const dist = new URL('dist/firefox/', root);
   const manifest = JSON.parse(readFileSync(new URL('manifest.json', dist), 'utf8'));
   assert.equal(manifest.background.service_worker, undefined);
-  const files = [...manifest.background.scripts, ...manifest.content_scripts.flatMap((c) => c.js), manifest.action.default_popup];
+  const files = [
+    ...manifest.background.scripts,
+    ...manifest.content_scripts.flatMap((c) => c.js),
+    ...manifest.web_accessible_resources.flatMap((w) => w.resources),
+    manifest.action.default_popup,
+    'pause.js',
+  ];
   for (const file of files) assert.ok(existsSync(new URL(file, dist)), file);
 });
 

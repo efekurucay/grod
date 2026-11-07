@@ -116,8 +116,13 @@ export function summarize(days: number, logs: Logs, usage: Usage | null) {
   }
   const byHour = new Array(24).fill(0);
   for (const n of posted) byHour[new Date(n.t).getHours()]++;
-  const fires = new Map<string, number>();
-  for (const e of logs.events) fires.set(e.rule, (fires.get(e.rule) ?? 0) + 1);
+  // Per rule and action: scroll pauses log "paused" then "left" or "continued"; the launcher logs "opened" or "backed-out".
+  const actions = new Map<string, Record<string, number>>();
+  for (const e of logs.events) {
+    const counts = actions.get(e.rule) ?? {};
+    counts[e.action] = (counts[e.action] ?? 0) + 1;
+    actions.set(e.rule, counts);
+  }
   const deleted = logs.notifications.filter((n) => n.e === 'removed' && n.reason === 'app').length;
 
   let screenTime: [string, number][] = [];
@@ -141,7 +146,7 @@ export function summarize(days: number, logs: Logs, usage: Usage | null) {
       byHour,
       withdrawnByApp: deleted,
     },
-    ruleFires: top(fires, 50).map(([rule, count]) => ({ rule, count })),
+    ruleActions: [...actions.entries()].map(([rule, counts]) => ({ rule, ...counts })),
     screenTimeMinutes: usage ? screenTime.map(([pkg, minutes]) => ({ pkg, minutes })) : 'usage access not granted or app not reachable',
   };
 }

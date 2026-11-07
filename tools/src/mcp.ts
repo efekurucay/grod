@@ -12,9 +12,9 @@ import {
   revision,
   save,
   upsertRule,
+  scrollDefaults,
   type Rule,
 } from './rules.ts';
-import { addChannel, removeChannel, resolveChannel } from './channels.ts';
 import { phoneSummary, readPhone, searchNotifications } from './phone.ts';
 import { history, snapshot } from './review.ts';
 import { deliver, sync } from './sync.ts';
@@ -38,7 +38,7 @@ server.registerTool(
   'rules_guide',
   {
     description:
-      'Read first before writing a rule: how each platform applies rules, selector and view-id advice, plus the JSON schema.',
+      'Read first before writing a rule: how the scroll pause and web link rules work on each platform, plus the JSON schema.',
     inputSchema: z.object({}),
   },
   () =>
@@ -63,7 +63,7 @@ server.registerTool(
 
 server.registerTool(
   'get_rule',
-  { description: 'One rule as stored, with every selector and view id.', inputSchema: z.object({ id: z.string() }) },
+  { description: 'One rule as stored: its Android packages, web hosts and link rules.', inputSchema: z.object({ id: z.string() }) },
   ({ id }) => tool(() => findRule(load(), id)),
 );
 
@@ -71,7 +71,7 @@ server.registerTool(
   'upsert_rule',
   {
     description:
-      'Add a rule or replace the rule with the same id. The rule is validated against the schema before saving; invalid rules are rejected with the reasons. Prefer removing the feed (hide/cover/feed) over blocking a whole app.',
+      'Add a rule or replace the rule with the same id. The rule is validated against the schema before saving; invalid rules are rejected with the reasons. A rule names an app\'s Android packages and its web hosts; scrolling in them counts toward the scroll pause.',
     inputSchema: z.object({ rule: z.record(z.string(), z.unknown()).describe('A complete rule object, see rules_guide') }),
   },
   ({ rule }) =>
@@ -108,39 +108,24 @@ server.registerTool(
 );
 
 server.registerTool(
-  'block_youtube_channel',
+  'set_scroll_pause',
   {
     description:
-      'Hide a YouTube channel everywhere (feeds, search, recommendations, its watch and channel pages) on the web and in the Android app. Give a video or channel link or an @handle; the channel is looked up on YouTube.',
-    inputSchema: z.object({ link: z.string().describe('Video link, channel link or @handle') }),
+      'Scroll pause settings: after every freeSeconds of scrolling in the apps and sites of enabled rules, a pause of firstPauseSeconds, then growth times longer each time up to maxPauseSeconds; resetMinutes without scrolling starts over. Give only what changes; returns the full settings.',
+    inputSchema: z.object({
+      freeSeconds: z.number().int().min(10).max(3600).optional(),
+      firstPauseSeconds: z.number().int().min(1).max(600).optional(),
+      growth: z.number().min(1).max(10).optional(),
+      maxPauseSeconds: z.number().int().min(1).max(3600).optional(),
+      resetMinutes: z.number().int().min(1).max(1440).optional(),
+    }),
   },
-  async ({ link }) => {
-    try {
-      const channel = await resolveChannel(link);
-      return tool(() => {
-        const file = load();
-        const added = addChannel(file, channel);
-        if (added) save(file);
-        return `${added ? 'blocked' : 'already blocked'}: ${channel.name} (${channel.handle}). ${deliver()}`;
-      });
-    } catch (e) {
-      return tool(() => {
-        throw e;
-      });
-    }
-  },
-);
-
-server.registerTool(
-  'unblock_youtube_channel',
-  { description: 'Show a blocked YouTube channel again, by @handle or exact name.', inputSchema: z.object({ channel: z.string() }) },
-  ({ channel }) =>
+  (changes) =>
     tool(() => {
       const file = load();
-      const removed = removeChannel(file, channel);
-      if (!removed.length) throw new Error(`no blocked channel matches ${channel}`);
+      file.scroll = { ...file.scroll, ...Object.fromEntries(Object.entries(changes).filter(([, v]) => v !== undefined)) };
       save(file);
-      return `unblocked ${removed.map((c) => c.name).join(', ')}. ${deliver()}`;
+      return `${JSON.stringify({ ...scrollDefaults, ...file.scroll })}. ${deliver()}`;
     }),
 );
 
@@ -190,7 +175,7 @@ server.registerTool(
   'phone_stats',
   {
     description:
-      'What pulled the user in over the last days, read from the phone over adb: notifications per app and per hour, how many grod held, rule fires (blocked Reels/Shorts/channels), and screen time per app. Use it to suggest new rules or notification exceptions.',
+      'What pulled the user in over the last days, read from the phone over adb: notifications per app and per hour, how many grod held, scroll pauses per rule and whether the user left or continued after them, and screen time per app. Use it to suggest rule, scroll pause or notification changes.',
     inputSchema: z.object({ days: z.number().int().min(1).max(365).default(7) }),
   },
   ({ days }) => tool(() => phoneSummary(days)),

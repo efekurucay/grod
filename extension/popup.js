@@ -1,11 +1,6 @@
 const api = globalThis.browser ?? globalThis.chrome;
 const core = globalThis.grodCore;
-const {
-  rules: stored,
-  fetchedAt,
-  counts = {},
-  pendingChannels = [],
-} = await api.storage.local.get(['rules', 'fetchedAt', 'counts', 'pendingChannels']);
+const { rules: stored, fetchedAt, pauses = {} } = await api.storage.local.get(['rules', 'fetchedAt', 'pauses']);
 const [tab] = await api.tabs.query({ active: true, currentWindow: true });
 
 const text = (id, value) => (document.getElementById(id).textContent = value);
@@ -55,23 +50,10 @@ for (const rule of stored?.file.rules ?? []) {
     row({
       title: rule.title,
       meta: rule.enabled ? '' : 'Off',
-      end: String(counts[rule.id] ?? 0),
+      end: String(pauses[rule.id] ?? 0),
       off: !rule.enabled,
       tooltip: rule.id,
     }),
   );
 }
 
-const channels = core.youtubeChannels(stored?.file, pendingChannels);
-document.getElementById('channels-section').hidden = !channels.length;
-for (const channel of channels) {
-  document.getElementById('channels').append(
-    row({
-      title: channel.name,
-      meta: channel.handle,
-      // Pending: applied here, not yet in the rules file the phone gets.
-      end: channel.rule === core.pendingRule ? 'Pending' : '',
-      tooltip: channel.id ?? channel.handle,
-    }),
-  );
-}

@@ -20,9 +20,9 @@ test('accepts only schemaVersion 1 files with a rules array', () => {
 });
 
 test('host matches itself and subdomains only', () => {
-  assert.deepEqual(forHost('youtube.com').map((r) => r.id), ['youtube-shorts']);
-  assert.deepEqual(forHost('m.youtube.com').map((r) => r.id), ['youtube-shorts']);
-  assert.deepEqual(forHost('www.youtube.com').map((r) => r.id), ['youtube-shorts']);
+  assert.deepEqual(forHost('youtube.com').map((r) => r.id), ['youtube']);
+  assert.deepEqual(forHost('m.youtube.com').map((r) => r.id), ['youtube']);
+  assert.deepEqual(forHost('www.youtube.com').map((r) => r.id), ['youtube']);
   assert.deepEqual(forHost('notyoutube.com'), []);
   assert.deepEqual(forHost('youtube.com.example.org'), []);
 });
@@ -34,7 +34,7 @@ test('rules without a web section never match', () => {
 test('YouTube Shorts URL redirects to the normal player', () => {
   const d = decide('www.youtube.com', '/shorts/abcDEF12345?si=x');
   assert.equal(d.action, 'redirect');
-  assert.equal(d.rule.id, 'youtube-shorts');
+  assert.equal(d.rule.id, 'youtube');
   assert.equal(d.target, '/watch?v=abcDEF12345');
   assert.equal(decide('www.youtube.com', '/watch?v=abcDEF12345'), null);
 });
@@ -56,7 +56,7 @@ test('TikTok is blocked on every path', () => {
 
 test('disabled rules are ignored', () => {
   const off = structuredClone(file);
-  off.rules.find((r) => r.id === 'youtube-shorts').enabled = false;
+  off.rules.find((r) => r.id === 'youtube').enabled = false;
   assert.deepEqual(forHost('www.youtube.com', off), []);
 });
 
@@ -78,90 +78,95 @@ test('an invalid regex is skipped without breaking other rules', () => {
   assert.equal(core.decide(rules, '/other'), null);
 });
 
-test('invalid selectors are skipped and each valid one gets its own CSS rule', () => {
-  const rules = [
-    { id: 'a', enabled: true, web: { hosts: ['x.com'], hide: ['a[href="/reels/"]', 'div:::bad', 'nav'] } },
-    { id: 'b', enabled: true, web: { hosts: ['x.com'], hide: ['nav'] } },
-  ];
-  const check = (selector) => {
-    if (selector.includes(':::')) throw new SyntaxError(selector);
-  };
-  const selectors = core.hideSelectors(rules, check);
-  assert.deepEqual(selectors, ['a[href="/reels/"]', 'nav']);
-  assert.equal(
-    core.css(selectors),
-    'a[href="/reels/"] { display: none !important; }\nnav { display: none !important; }',
-  );
-});
+const settings = core.scrollSettings(file);
+const S = 1000;
 
-const cem = { name: 'Çin Malı Cem Yılmaz', handle: '@ÇinMalıCemYılmaz' };
-const CEM_HREF = '/@%C3%87inMal%C4%B1CemY%C4%B1lmaz';
-const channelFile = {
-  schemaVersion: 1,
-  rules: [
-    { id: 'yt-channels', title: 'Channels', enabled: true, youtubeChannels: [cem, { name: 'X', handle: '@xchan', id: 'UC1234567890123456789012' }] },
-    { id: 'off', title: 'Off', enabled: false, youtubeChannels: [{ name: 'Off', handle: '@offchan' }] },
-  ],
-};
-
-test('channel lists merge from enabled rules plus pending, one entry per handle', () => {
-  const pending = [{ name: 'Dup', handle: '@%C3%A7inmal%C4%B1cemy%C4%B1lmaz' }, { name: 'New', handle: '@new' }, { handle: 'bad' }];
-  const channels = core.youtubeChannels(channelFile, pending);
-  assert.deepEqual(channels.map((c) => [c.handle, c.rule.id]), [
-    ['@ÇinMalıCemYılmaz', 'yt-channels'],
-    ['@xchan', 'yt-channels'],
-    ['@new', core.pendingRule.id],
-  ]);
-  assert.deepEqual(core.youtubeChannels(undefined, []), []);
-});
-
-test('handles compare case-insensitively after percent-decoding', () => {
-  assert.equal(core.handleKey(CEM_HREF.slice(1)), '@çinmalıcemyılmaz');
-  assert.equal(core.handleKey(CEM_HREF.slice(1)), core.handleKey(cem.handle));
-  assert.equal(core.handleKey('@MrBeast'), core.handleKey('@mrbeast'));
-  assert.equal(core.handleKey('@bad%E0'), '@bad%e0');
-  assert.equal(core.handleKey(cem.handle.normalize('NFD')), core.handleKey(cem.handle));
-});
-
-test('channel pages and anything below them are blocked with the owning rule', () => {
-  const channels = core.youtubeChannels(channelFile);
-  for (const path of [CEM_HREF, `${CEM_HREF}/videos`, '/@çinmalıcemyılmaz', '/@ÇinMalıCemYılmaz/shorts', '/channel/UC1234567890123456789012/about']) {
-    assert.equal(core.channelForPath(channels, path)?.rule.id, 'yt-channels', path);
+// Scrolls steadily every 250 ms from `start` for `seconds`, all on one rule; returns the last result.
+function scrollFor(session, start, seconds, rule = 'a') {
+  let result = { session, pause: null };
+  for (let t = start; t <= start + seconds * S; t += 250) {
+    result = core.scrollEvent(result.session, settings, t, rule);
+    if (result.started) return result;
   }
-  for (const path of ['/@offchan', '/@ÇinMalıCemYılmazz', '/watch', '/', '/channel/UCother', '/results']) {
-    assert.equal(core.channelForPath(channels, path), null, path);
+  return result;
+}
+
+test('scroll settings take the file values and fall back to the defaults', () => {
+  assert.deepEqual(core.scrollSettings(undefined), core.scrollDefaults);
+  assert.deepEqual(core.scrollSettings({ scroll: { freeSeconds: 20, growth: 'x', maxPauseSeconds: -1 } }), {
+    ...core.scrollDefaults,
+    freeSeconds: 20,
+  });
+  assert.deepEqual(settings, { freeSeconds: 60, firstPauseSeconds: 10, growth: 2, maxPauseSeconds: 300, resetMinutes: 15 });
+});
+
+test('pauses double from firstPauseSeconds and stop at maxPauseSeconds', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((n) => core.pauseSeconds(settings, n)), [10, 20, 40, 80, 160, 300, 300]);
+});
+
+test('the first scroll event of a session adds nothing', () => {
+  const { session, pause } = core.scrollEvent(null, settings, 1000, 'a');
+  assert.deepEqual(session, { scrolled: 0, total: 0, pauses: 0, last: 1000, pause: null });
+  assert.equal(pause, null);
+});
+
+test('steady scrolling reaches freeSeconds and starts the first pause', () => {
+  const { session, pause, started } = scrollFor(null, 0, 120);
+  assert.equal(started, true);
+  assert.deepEqual(pause, { rule: 'a', until: 60 * S + 10 * S, total: 60 * S });
+  assert.deepEqual(session, { scrolled: 0, total: 60 * S, pauses: 1, last: 60 * S, pause });
+});
+
+test('a gap between scroll events adds at most 5 s', () => {
+  let { session } = core.scrollEvent(null, settings, 0, 'a');
+  session = core.scrollEvent(session, settings, 2 * S, 'a').session;
+  assert.equal(session.scrolled, 2 * S);
+  session = core.scrollEvent(session, settings, 2 * S + 4 * 60 * S, 'a').session;
+  assert.equal(session.scrolled, 7 * S);
+  assert.equal(session.total, 7 * S);
+});
+
+test('scroll events during a pause are ignored and return the same pause', () => {
+  const first = scrollFor(null, 0, 120);
+  const during = core.scrollEvent(first.session, settings, first.pause.until - 1, 'b');
+  assert.equal(during.started, false);
+  assert.equal(during.session, first.session);
+  assert.equal(during.pause, first.pause);
+  // Right after it ends the gap since the last counted event is capped, then counting resumes.
+  const after = core.scrollEvent(first.session, settings, first.pause.until, 'a');
+  assert.equal(after.pause, null);
+  assert.equal(after.session.scrolled, 5 * S);
+});
+
+test('each pause in a session is longer, capped at maxPauseSeconds', () => {
+  let result = { session: null };
+  let t = 0;
+  const lengths = [];
+  for (let i = 0; i < 7; i++) {
+    result = scrollFor(result.session, t, 120);
+    lengths.push((result.pause.until - result.session.last) / S);
+    t = result.pause.until;
   }
+  assert.deepEqual(lengths, [10, 20, 40, 80, 160, 300, 300]);
+  assert.equal(result.session.pauses, 7);
 });
 
-test('channel selectors cover every tile type with raw and encoded handles and the channel id', () => {
-  const selectors = core.channelSelectors(core.youtubeChannels(channelFile));
-  assert.equal(selectors.length, core.channelTiles.length);
-  assert.ok(core.channelTiles.includes('ytd-video-renderer') && core.channelTiles.includes('ytm-video-with-context-renderer'));
-  const video = selectors.find((s) => s.startsWith('ytd-video-renderer:has('));
-  assert.ok(video.includes(`a[href="${CEM_HREF}" i]`));
-  assert.ok(video.includes(`a[href^="${CEM_HREF}/" i]`));
-  assert.ok(video.includes('a[href="/@ÇinMalıCemYılmaz" i]'));
-  assert.ok(video.includes('a[href="/channel/UC1234567890123456789012"]'));
-  assert.ok(!video.includes('offchan'));
-  assert.deepEqual(core.channelSelectors([]), []);
-  const decomposed = core.channelSelectors([{ ...cem, handle: cem.handle.normalize('NFD') }])[1];
-  assert.ok(decomposed.includes(`a[href="${CEM_HREF}" i]`), decomposed);
+test('resetMinutes without scrolling starts a new session', () => {
+  const first = scrollFor(null, 0, 120);
+  const late = first.session.last + 15 * 60 * S;
+  const { session } = core.scrollEvent(first.session, settings, late, 'a');
+  assert.deepEqual(session, { scrolled: 0, total: 0, pauses: 0, last: late, pause: null });
+  const next = scrollFor(session, late, 120);
+  assert.equal(next.pause.until - next.session.last, 10 * S);
+  const almost = core.scrollEvent(first.session, settings, late - 1, 'a').session;
+  assert.equal(almost.pauses, 1);
 });
 
-test('quotes in a handle cannot break out of the selector string', () => {
-  const [selector] = core.channelSelectors([{ name: 'Q', handle: '@a"b\\c' }]);
-  assert.ok(selector.includes('a[href="/@a\\"b\\\\c" i]'), selector);
-});
-
-test('a tile yields its channel: handle, shortest link text as name, and id', () => {
-  const links = [
-    { href: '/watch?v=abc', text: 'Some video title' },
-    { href: CEM_HREF, text: '' },
-    { href: CEM_HREF, text: '\n  Çin Malı Cem Yılmaz\n ' },
-    { href: 'https://www.youtube.com/channel/UC1234567890123456789012', text: '' },
-    { href: '/@someoneelse', text: 'Other' },
-  ];
-  assert.deepEqual(core.channelFromLinks(links), { ...cem, id: 'UC1234567890123456789012' });
-  assert.deepEqual(core.channelFromLinks([{ href: '/@solo', text: '' }]), { name: 'solo', handle: '@solo' });
-  assert.equal(core.channelFromLinks([{ href: '/watch?v=1', text: 'x' }]), null);
+test('the pause goes to the rule whose host was scrolled last, with the session total', () => {
+  let { session } = scrollFor(null, 0, 50, 'youtube');
+  ({ session } = core.scrollEvent(session, settings, session.last + 4 * S, 'instagram'));
+  const result = scrollFor(session, session.last + 250, 20, 'instagram');
+  assert.equal(result.started, true);
+  assert.equal(result.pause.rule, 'instagram');
+  assert.equal(result.pause.total, 60 * S);
 });

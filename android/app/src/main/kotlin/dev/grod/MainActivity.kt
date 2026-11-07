@@ -21,7 +21,7 @@ import java.text.DateFormat
 import java.time.ZoneId
 import java.util.Date
 
-/** Setup checklist, status, notifications, weekly review, rules, blocked channels and the rules URL. */
+/** Setup checklist, status, notifications, weekly review, launcher, rules with the scroll pause, and the rules URL. */
 class MainActivity : Activity() {
     companion object {
         const val EXTRA_SECTION = "section"
@@ -117,7 +117,6 @@ class MainActivity : Activity() {
         review()
         launcher()
         rules()
-        channels()
         if (scrollToReview) {
             scrollToReview = false
             reviewSection?.let { target -> scroll.post { scroll.smoothScrollTo(0, target.top) } }
@@ -142,7 +141,7 @@ class MainActivity : Activity() {
     /** Shown until every access is granted, so a sideloaded install can be finished without adb. */
     private fun setup() {
         val steps = mutableListOf(
-            Step("Accessibility service", "Removes the feeds. Find grod under Downloaded apps.",
+            Step("Accessibility service", "Pauses endless scrolling. Find grod under Downloaded apps.",
                 Permissions.accessibilityService(this), settings(Settings.ACTION_ACCESSIBILITY_SETTINGS)),
             Step("Notification access", "Holds notifications until the next delivery.",
                 Permissions.notificationAccess(this), settings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)),
@@ -222,28 +221,19 @@ class MainActivity : Activity() {
 
     private fun rules() {
         val body = ui.section(content, "Rules")
+        val s = store.rules.scroll
+        val growth = if (s.growth % 1.0 == 0.0) "${s.growth.toInt()}" else "${s.growth}"
+        body.addView(ui.muted(
+            "Scroll pause after every ${s.freeSeconds} s of scrolling: ${s.firstPauseSeconds} s, then ×$growth each time, " +
+                "up to ${s.maxPauseSeconds} s. Starts over after ${s.resetMinutes} min without scrolling.",
+            15f,
+        ).apply { setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(4)) })
         for (rule in store.rules.rules) {
-            val parts = mutableListOf<String>()
-            rule.android?.let { a ->
-                if (a.cover.isNotEmpty()) parts.add("covers ${a.cover.size}")
-                if (a.mask.isNotEmpty()) parts.add("masks ${a.mask.size}")
-            }
-            if (rule.youtubeChannels.isNotEmpty()) parts.add("channels ${rule.youtubeChannels.size}")
-            parts.add("acted ${store.fireCount(rule.id)}×")
+            val meta = if (rule.android != null) "paused ${store.fireCount(rule.id)}×" else "not on Android"
             val end = ui.muted(if (rule.enabled) "On" else "Off", 15f)
-            ui.row(body, rule.title, parts.joinToString(" · "), end, off = !rule.enabled)
+            ui.row(body, rule.title, meta, end, off = !rule.enabled)
         }
         if (store.rules.rules.isEmpty()) ui.row(body, "No rules yet", off = true)
-    }
-
-    private fun channels() {
-        val body = ui.section(content, "Blocked YouTube channels")
-        for ((channel, ruleId) in store.rules.channels) {
-            // Rule channels are removed with `grod channel remove`; the phone only owns what it added.
-            val end = if (ruleId == null) ui.button("Remove") { store.removeLocalChannel(channel.handle) } else null
-            ui.row(body, channel.name, "${channel.handle} · ${ruleId?.let { "rule $it" } ?: "added on this phone"}", end)
-        }
-        if (store.rules.channels.isEmpty()) ui.row(body, "None", "Add one from YouTube: Share → grod.", off = true)
     }
 
     /** targetSdk 35 draws edge to edge, so the content has to keep clear of the system bars itself. */

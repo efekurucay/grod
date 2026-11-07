@@ -28,15 +28,6 @@ class RuleStore private constructor(private val app: Context) {
     @Volatile
     private var pushedFile: File? = null
 
-    @Volatile
-    private var channelFile: ChannelFile? = null
-
-    /** The active rules copy, before the phone's own channels are added. */
-    private var parsed: RuleSet = RuleSet.EMPTY
-    private var localChannels: List<Channel> = emptyList()
-    private var channelsMtime = -1L
-
-    /** Active rules plus the channels blocked from this phone. */
     var rules: RuleSet = RuleSet.EMPTY
         private set
 
@@ -56,18 +47,10 @@ class RuleStore private constructor(private val app: Context) {
 
     init {
         worker.execute {
-            val external = app.getExternalFilesDir(null)
-            pushedFile = external?.let { File(it, "rules.json") }
-            channelFile = external?.let { ChannelFile(File(it, "channels-added.json")) }
+            pushedFile = app.getExternalFilesDir(null)?.let { File(it, "rules.json") }
             val loaded = copy.load()
             // Queued before any copy the worker applies later, so it cannot overwrite a newer one.
-            main.post {
-                if (loaded != null) {
-                    parsed = loaded
-                    publishRules()
-                }
-                checkChannels()
-            }
+            if (loaded != null) main.post { publishRules(loaded) }
         }
         checkBundled()
     }
@@ -76,20 +59,16 @@ class RuleStore private constructor(private val app: Context) {
 
     fun removeListener(listener: () -> Unit) = listeners.remove(listener)
 
-    /** Bundled copy (first run, app update), the adb-pushed file, and the phone's channel list. */
+    /** Bundled copy (first run, app update) and the adb-pushed file. */
     fun checkLocal() {
         checkBundled()
         checkPushed()
-        checkChannels()
     }
 
     /** Cheap enough to call on every accessibility event: both checks are rate limited. */
     fun onEvent() {
         val now = System.currentTimeMillis()
-        if (now - lastPushedCheck >= PUSHED_CHECK_MS) {
-            checkPushed()
-            checkChannels()
-        }
+        if (now - lastPushedCheck >= PUSHED_CHECK_MS) checkPushed()
         if (rulesUrl != null && now - lastFetchAt >= FETCH_INTERVAL_MS) fetch()
     }
 
@@ -115,40 +94,6 @@ class RuleStore private constructor(private val app: Context) {
         }
     }
 
-    /**
-     * Blocks a channel from this phone. [done] gets false when it is already blocked. The file is
-     * read again before writing, since `grod sync` may have replaced it.
-     */
-    fun addLocalChannel(channel: Channel, done: (added: Boolean) -> Unit, failed: (String) -> Unit) {
-        if (rules.channels.any { sameHandle(it.channel.handle, channel.handle) }) return done(false)
-        val file = channelFile ?: return failed("phone storage is not available")
-        worker.execute {
-            val list = try {
-                file.add(channel)
-            } catch (e: Exception) {
-                main.post { failed(e.message ?: e.javaClass.simpleName) }
-                return@execute
-            }
-            main.post {
-                setLocalChannels(list, file)
-                done(true)
-            }
-        }
-    }
-
-    fun removeLocalChannel(handle: String) {
-        val file = channelFile ?: return
-        worker.execute {
-            val list = try {
-                file.remove(handle)
-            } catch (e: Exception) {
-                main.post { setError("channels file: ${e.message}") }
-                return@execute
-            }
-            main.post { setLocalChannels(list, file) }
-        }
-    }
-
     fun fireCount(ruleId: String): Int = fires.getInt(ruleId, 0)
 
     fun countFire(ruleId: String) {
@@ -164,32 +109,8 @@ class RuleStore private constructor(private val app: Context) {
         save("bundled", null) { app.assets.open("rules.json").use { it.readBytes().toString(Charsets.UTF_8) } }
     }
 
-    /** Only a stat on the main thread; the file is read on the worker. A missing file means no channels. */
-    private fun checkChannels() {
-        val file = channelFile ?: return
-        val mtime = file.file.lastModified()
-        if (mtime == channelsMtime) return
-        channelsMtime = mtime
-        worker.execute {
-            val list = try {
-                file.read()
-            } catch (e: Exception) {
-                main.post { setError("channels file ignored: ${e.message}") }
-                return@execute
-            }
-            main.post { setLocalChannels(list, file) }
-        }
-    }
-
-    private fun setLocalChannels(list: List<Channel>, file: ChannelFile) {
-        channelsMtime = file.file.lastModified()
-        if (list == localChannels) return
-        localChannels = list
-        publishRules()
-    }
-
-    private fun publishRules() {
-        rules = parsed.copy(localChannels = localChannels)
+    private fun publishRules(set: RuleSet) {
+        rules = set
         ReviewSchedule.apply(app, rules.review)
         notifyListeners()
     }
@@ -218,14 +139,13 @@ class RuleStore private constructor(private val app: Context) {
             return
         }
         main.post {
-            parsed = saved
             prefs.edit().apply {
                 putString(K_SOURCE, from)
                 remove(K_ERROR)
                 // The ETag vouches for the body on disk; once another source replaces it, a 304 must not keep that body.
                 if (from == "url" && etag != null) putString(K_ETAG, etag) else remove(K_ETAG)
             }.apply()
-            publishRules()
+            publishRules(saved)
         }
     }
 

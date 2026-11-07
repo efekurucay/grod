@@ -40,7 +40,7 @@ final class GrodCoreTests: XCTestCase {
         let rules = try realRules()
         XCTAssertEqual(rules.decision(for: URL(string: "https://m.youtube.com/shorts/abcDEF12345?si=x")!),
                        .redirect(URL(string: "https://m.youtube.com/watch?v=abcDEF12345")!))
-        XCTAssertEqual(rules.decision(for: URL(string: "https://instagram.com/reels/")!), .block(ruleID: "instagram-reels"))
+        XCTAssertEqual(rules.decision(for: URL(string: "https://instagram.com/reels/")!), .block(ruleID: "instagram"))
         XCTAssertEqual(rules.decision(for: URL(string: "https://instagram.com/reel/ABC/")!), .allow)
         XCTAssertEqual(rules.decision(for: URL(string: "https://tiktok.com/")!), .block(ruleID: "tiktok"))
         XCTAssertEqual(rules.decision(for: URL(string: "https://notyoutube.com/shorts/abc")!), .allow)

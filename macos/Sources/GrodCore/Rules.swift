@@ -4,6 +4,7 @@ import Foundation
 public struct Rules: Codable, Sendable {
     public let schemaVersion: Int
     public let rules: [Rule]
+    public let scroll: ScrollSettings?
     public let notifications: NotificationSettings?
     public let review: ReviewSettings?
     public let launcher: LauncherSettings?
@@ -14,7 +15,6 @@ public struct Rule: Codable, Sendable {
     public let title: String
     public let why: String?
     public let enabled: Bool
-    public let youtubeChannels: [YouTubeChannel]?
     public let web: WebRules?
     public let android: AndroidRules?
     public let macos: MacRules?
@@ -22,7 +22,6 @@ public struct Rule: Codable, Sendable {
 
 public struct WebRules: Codable, Sendable {
     public let hosts: [String]
-    public let hide: [String]?
     public let redirect: [Redirect]?
     public let block: [String]?
 }
@@ -47,10 +46,24 @@ public struct MacRules: Codable, Sendable {
     public let quitApps: [String]?
 }
 
-public struct YouTubeChannel: Codable, Sendable, Hashable {
-    public let name: String
-    public let handle: String
-    public let id: String?
+/// docs/rules.md "Scroll pause". A missing field takes its default, as on every platform.
+public struct ScrollSettings: Codable, Sendable, Equatable {
+    public var freeSeconds = 60
+    public var firstPauseSeconds = 10
+    public var growth = 2.0
+    public var maxPauseSeconds = 300
+    public var resetMinutes = 15
+
+    public init() {}
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        freeSeconds = try container.decodeIfPresent(Int.self, forKey: .freeSeconds) ?? freeSeconds
+        firstPauseSeconds = try container.decodeIfPresent(Int.self, forKey: .firstPauseSeconds) ?? firstPauseSeconds
+        growth = try container.decodeIfPresent(Double.self, forKey: .growth) ?? growth
+        maxPauseSeconds = try container.decodeIfPresent(Int.self, forKey: .maxPauseSeconds) ?? maxPauseSeconds
+        resetMinutes = try container.decodeIfPresent(Int.self, forKey: .resetMinutes) ?? resetMinutes
+    }
 }
 
 public struct NotificationSettings: Codable, Sendable, Equatable {

@@ -22,6 +22,9 @@
         "$ref": "#/$defs/rule"
       }
     },
+    "scroll": {
+      "$ref": "#/$defs/scroll"
+    },
     "notifications": {
       "$ref": "#/$defs/notifications"
     },
@@ -52,17 +55,10 @@
         },
         "why": {
           "type": "string",
-          "description": "Shown when the rule fires. Say what stays usable."
+          "description": "Shown on the pause screen and the blocked page. Say what the rule does and what stays usable."
         },
         "enabled": {
           "type": "boolean"
-        },
-        "youtubeChannels": {
-          "description": "YouTube channels whose videos disappear everywhere: feeds, search, recommendations; their watch and channel pages are blocked. Applied on the web and in the YouTube Android app.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/youtubeChannel"
-          }
         },
         "web": {
           "$ref": "#/$defs/web"
@@ -83,19 +79,12 @@
       ],
       "properties": {
         "hosts": {
-          "description": "Hostnames. A host also matches its subdomains (youtube.com matches m.youtube.com).",
+          "description": "Hostnames. A host also matches its subdomains (youtube.com matches m.youtube.com). Scrolling on them counts toward the scroll pause.",
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "string",
             "pattern": "^[a-z0-9.-]+$"
-          }
-        },
-        "hide": {
-          "description": "Plain CSS selectors (no uBlock extensions) hidden with display:none. Videos inside are paused.",
-          "type": "array",
-          "items": {
-            "type": "string"
           }
         },
         "redirect": {
@@ -128,30 +117,6 @@
         }
       }
     },
-    "matcher": {
-      "description": "Every field present must match one accessibility node. viewId is the id without the package prefix. text and desc are exact, descContains is a substring; all case-insensitive.",
-      "type": "object",
-      "additionalProperties": false,
-      "minProperties": 1,
-      "properties": {
-        "viewId": {
-          "type": "string"
-        },
-        "text": {
-          "type": "string"
-        },
-        "desc": {
-          "type": "string"
-        },
-        "descContains": {
-          "type": "string",
-          "minLength": 1
-        },
-        "selected": {
-          "type": "boolean"
-        }
-      }
-    },
     "android": {
       "type": "object",
       "additionalProperties": false,
@@ -160,47 +125,13 @@
       ],
       "properties": {
         "packages": {
+          "description": "Android package names. Scrolling inside them counts toward the scroll pause (docs/rules.md).",
           "type": "array",
           "minItems": 1,
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+$"
           }
-        },
-        "feed": {
-          "description": "Any matcher found on screen means the user is inside the feed; grod runs the action. Missing or empty: the whole app is the feed.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/matcher"
-          }
-        },
-        "exempt": {
-          "description": "Any matcher found on screen holds the action (e.g. one reel opened from a DM) until the user scrolls the feed.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/matcher"
-          }
-        },
-        "cover": {
-          "description": "Nodes covered with an opaque overlay that swallows taps (e.g. the Reels tab button).",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/matcher"
-          }
-        },
-        "mask": {
-          "description": "Nodes hidden under an opaque overlay that lets touches through, for large areas such as feed thumbnails: the page still scrolls and a tap still reaches the app.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/matcher"
-          }
-        },
-        "action": {
-          "description": "back: press Back, then Home if still in the feed. home: go straight to the launcher; use when the whole app is the feed.",
-          "enum": [
-            "back",
-            "home"
-          ],
-          "default": "back"
         }
       }
     },
@@ -214,31 +145,6 @@
           "items": {
             "type": "string"
           }
-        }
-      }
-    },
-    "youtubeChannel": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "name",
-        "handle"
-      ],
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Display name exactly as YouTube shows it; the Android app matches on it."
-        },
-        "handle": {
-          "type": "string",
-          "pattern": "^@[^\\s/?#]+$",
-          "description": "Channel handle with @, as in youtube.com/@handle; the web matches on it."
-        },
-        "id": {
-          "type": "string",
-          "pattern": "^UC[A-Za-z0-9_-]{22}$",
-          "description": "Channel id, for pages that link /channel/<id> instead of the handle."
         }
       }
     },
@@ -357,6 +263,43 @@
           "type": "boolean",
           "default": false,
           "description": "Show the current weather next to the date, from Open-Meteo with a location rounded to 0.1°, at most hourly. Off by default: no location prompt and no network."
+        }
+      }
+    },
+    "scroll": {
+      "description": "Scroll pause: after every freeSeconds of scrolling in the apps and sites of enabled rules, a pause screen waits firstPauseSeconds, then growth times longer each time, up to maxPauseSeconds. resetMinutes without scrolling starts over.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "freeSeconds": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 3600,
+          "default": 60
+        },
+        "firstPauseSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 10
+        },
+        "growth": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 2
+        },
+        "maxPauseSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 300
+        },
+        "resetMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440,
+          "default": 15
         }
       }
     }

@@ -15,22 +15,12 @@ class RulesTest {
         val set = Rules.parse(read("grod.rulesFile"))
         assertNull(set.revision)
 
-        val yt = set.rules.single { it.id == "youtube-shorts" }
+        val yt = set.rules.single { it.id == "youtube" }
         assertEquals(listOf("web", "android"), yt.platforms)
-        val android = yt.android!!
-        assertEquals(listOf("com.google.android.youtube", "app.revanced.android.youtube"), android.packages)
-        assertEquals(listOf(Matcher(viewId = "reel_player_page_container"), Matcher(viewId = "reel_watch_player")), android.feed)
-        assertEquals(Action.BACK, android.action)
+        assertEquals(listOf("com.google.android.youtube", "app.revanced.android.youtube"), yt.android!!.packages)
+        assertEquals(listOf(yt), set.rulesFor("com.google.android.youtube"))
+        assertEquals(ScrollSettings(), set.scroll)
 
-        val igAndroid = set.rules.single { it.id == "instagram-reels" }.android!!
-        assertTrue(Matcher(viewId = "clips_viewer_action_bar_title", text = "Your reels") in igAndroid.exempt)
-
-        val tiktok = set.rules.single { it.id == "tiktok" }.android!!
-        assertTrue(tiktok.feed.isEmpty())
-        assertTrue(tiktok.mask.isEmpty())
-        assertEquals(Action.HOME, tiktok.action)
-
-        assertNull(set.rules.single { it.id == "facebook-reels" }.android)
         assertEquals(ReviewSettings(7, 20 * 60), Rules.parse("""{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"20:00"}}""").review)
         val n = set.notifications!!
         assertTrue(n.deliverEvery in 15..720)
@@ -72,17 +62,17 @@ class RulesTest {
             "empty title" to """{"schemaVersion":1,"rules":[{"id":"a","title":"","enabled":true}]}""",
             "enabled string" to """{"schemaVersion":1,"rules":[{"id":"a","title":"A","enabled":"yes"}]}""",
             "duplicate id" to """{"schemaVersion":1,"rules":[{"id":"a","title":"A","enabled":true},{"id":"a","title":"B","enabled":true}]}""",
-            "no packages" to withAndroid("""{"feed":[]}"""),
+            "no packages" to withAndroid("""{}"""),
             "empty packages" to withAndroid("""{"packages":[]}"""),
             "package not string" to withAndroid("""{"packages":[3]}"""),
-            "bad action" to withAndroid("""{"packages":["p"],"action":"kill"}"""),
-            "unknown android field" to withAndroid("""{"packages":["p"],"viewIds":["x"]}"""),
-            "empty matcher" to withAndroid("""{"packages":["p"],"feed":[{}]}"""),
-            "unknown matcher field" to withAndroid("""{"packages":["p"],"cover":[{"id":"x"}]}"""),
-            "matcher wrong type" to withAndroid("""{"packages":["p"],"exempt":[{"selected":"true"}]}"""),
-            "empty descContains" to withAndroid("""{"packages":["p"],"mask":[{"descContains":""}]}"""),
-            "descContains not string" to withAndroid("""{"packages":["p"],"mask":[{"descContains":1}]}"""),
-            "mask not array" to withAndroid("""{"packages":["p"],"mask":{"descContains":"x"}}"""),
+            "unknown android field" to withAndroid("""{"packages":["p"],"feed":[{"viewId":"x"}]}"""),
+            "scroll not object" to """{"schemaVersion":1,"rules":[],"scroll":60}""",
+            "scroll field" to """{"schemaVersion":1,"rules":[],"scroll":{"freeMinutes":1}}""",
+            "scroll free too small" to """{"schemaVersion":1,"rules":[],"scroll":{"freeSeconds":5}}""",
+            "scroll pause fraction" to """{"schemaVersion":1,"rules":[],"scroll":{"firstPauseSeconds":2.5}}""",
+            "scroll growth below 1" to """{"schemaVersion":1,"rules":[],"scroll":{"growth":0.5}}""",
+            "scroll growth string" to """{"schemaVersion":1,"rules":[],"scroll":{"growth":"2"}}""",
+            "scroll reset zero" to """{"schemaVersion":1,"rules":[],"scroll":{"resetMinutes":0}}""",
             "notifications every too small" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":10}}""",
             "notifications every fraction" to """{"schemaVersion":1,"rules":[],"notifications":{"enabled":true,"deliverEvery":60.5}}""",
             "notifications no enabled" to """{"schemaVersion":1,"rules":[],"notifications":{"deliverEvery":60}}""",
@@ -94,7 +84,6 @@ class RulesTest {
             "review weekday" to """{"schemaVersion":1,"rules":[],"review":{"weekday":0,"time":"20:00"}}""",
             "review time" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"8pm"}}""",
             "review field" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"20:00","day":"sun"}}""",
-            "matchers not array" to withAndroid("""{"packages":["p"],"feed":{"viewId":"x"}}"""),
         )
         for ((name, json) in bad) {
             try {
@@ -104,6 +93,15 @@ class RulesTest {
                 assertTrue(name, expected.message!!.isNotEmpty())
             }
         }
+    }
+
+    @Test
+    fun parsesScrollSettingsWithDefaults() {
+        assertEquals(
+            ScrollSettings(freeSeconds = 30, growth = 1.5, resetMinutes = 5),
+            Rules.parse("""{"schemaVersion":1,"rules":[],"scroll":{"freeSeconds":30,"growth":1.5,"resetMinutes":5}}""").scroll,
+        )
+        assertEquals(ScrollSettings(60, 10, 2.0, 300, 15), Rules.parse("""{"schemaVersion":1,"rules":[]}""").scroll)
     }
 
     @Test

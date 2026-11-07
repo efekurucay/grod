@@ -42,18 +42,18 @@ What the research says about short-form feeds and about tools that try to curb t
 
 ## Design principles grod follows
 
-1. **Remove the feature, not the app.** Only the Reels, Shorts and similar feeds go; stories, posts, DMs and search stay (Lyngs 2020; Purohit 2023; Zhang 2022). Whole-app blocks are kept for apps that are nothing but feed (TikTok).
-2. **Remove the trigger before the click.** In the browser the Reels and Shorts tabs and shelves are hidden, so nothing pulls the user in (Lyngs 2019). On Android they stay visible, because overlays drawn over another app's tabs never match its colors and read as dark patches; there grod leaves the feed the moment it opens.
-3. **One item is fine, the scroll is not.** A Short opens as a normal video; a reel sent in a DM plays once. Swiping on to the next one is what gets stopped (Chiossi 2023: the harm comes from rapid switching).
-4. **Stable, explained interventions.** Rules do not rotate. When a rule acts, grod says which one and what stays usable (Kovacs 2018).
-5. **Light, private logging.** Each platform only counts how often each rule fired, on the device. There is no dashboard, because dashboards do not raise agency (Zhang 2022; Okeke 2018).
+1. **Slow the scroll, keep the app.** Messages, posts, search and single videos stay free; only scrolling costs time (Lyngs 2020: removing the whole app brings fear of missing out; Chiossi 2023: the harm comes from rapid switching).
+2. **Friction that grows.** Each pause is longer than the last, because people learn to ignore a fixed pop-up (Meinhardt 2026).
+3. **Always a way out.** The pause screen offers "Leave" from the first second; backing out is the behavior that changes habits (Grüning 2023).
+4. **Measure behavior, not content.** grod counts scrolling, not what is on screen, so it works the same in every app and survives app redesigns. Blocking only the Reels or Shorts tab missed that the home feed now plays short videos too.
+5. **Stable, explained interventions.** Rules do not rotate. The pause screen says which app and how long you scrolled (Kovacs 2018).
 6. **Notifications in batches, not off.** The phone holds app notifications and delivers them together. Calls and alarms still ring, so nothing urgent is lost (Fitz 2019; Pielot & Rello 2017: alerts fully off made people anxious).
-7. **The user defines distraction.** Rules are data the user (or their agent) changes in one place (Lyngs 2020).
+7. **The user defines distraction.** Rules and pause settings are data the user (or their agent) changes in one place (Lyngs 2020).
 
 ## Not built, with the evidence for each
 
 - Making a rule harder to turn off than to turn on, because users drift toward weaker settings (Kovacs 2021).
 - Time-of-day schedules, because context changes how well interventions work (Meinhardt 2025).
-- A delayed escape hatch or gradually increasing friction instead of a hard stop (Grüning 2023; Meinhardt 2026). The user asked for the feed to be gone, not slowed down.
-- A grayscale mode. It cut social media and browsing time but not video time (Holte 2020), and video is what grod removes.
+- A usage dashboard, because dashboards do not raise the sense of agency (Zhang 2022; Okeke 2018). The weekly review is a conversation with numbers, not a dashboard.
+- A grayscale mode. It cut social media and browsing time but not video time (Holte 2020).
 - Blocking all mobile internet. It improved attention, but only a quarter of participants kept the block on for two weeks (Castelo 2025).

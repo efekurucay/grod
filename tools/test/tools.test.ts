@@ -87,13 +87,16 @@ test('MCP server lists its tools and edits rules over stdio', async (t) => {
   send({ method: 'notifications/initialized' });
   send({ id: 2, method: 'tools/list' });
   const names = (await reply(2)).result.tools.map((t: { name: string }) => t.name).sort();
-  assert.deepEqual(names, ['allow_notifications', 'block_youtube_channel', 'get_rule', 'list_rules', 'phone_stats', 'remove_rule', 'rules_guide', 'search_notifications', 'set_launcher', 'set_notification_batching', 'set_rule_enabled', 'sync', 'unblock_youtube_channel', 'upsert_rule', 'weekly_reviews']);
+  assert.deepEqual(names, ['allow_notifications', 'get_rule', 'list_rules', 'phone_stats', 'remove_rule', 'rules_guide', 'search_notifications', 'set_launcher', 'set_notification_batching', 'set_rule_enabled', 'set_scroll_pause', 'sync', 'upsert_rule', 'weekly_reviews']);
 
   send({ id: 3, method: 'tools/call', params: { name: 'set_rule_enabled', arguments: { id: 'tiktok', enabled: false } } });
   assert.match((await reply(3)).result.content[0].text, /tiktok disabled/);
   send({ id: 4, method: 'tools/call', params: { name: 'upsert_rule', arguments: { rule: { id: 'Bad', title: '', enabled: true } } } });
   assert.equal((await reply(4)).result.isError, true);
+  send({ id: 5, method: 'tools/call', params: { name: 'set_scroll_pause', arguments: { freeSeconds: 120 } } });
+  assert.match((await reply(5)).result.content[0].text, /"freeSeconds":120,"firstPauseSeconds":10/);
 
   const saved = JSON.parse(readFileSync(join(home, 'rules/grod.rules.json'), 'utf8'));
   assert.equal(saved.rules.find((r: { id: string }) => r.id === 'tiktok').enabled, false);
+  assert.equal(saved.scroll.freeSeconds, 120);
 });

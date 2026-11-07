@@ -13,19 +13,20 @@ const logs = {
     n({ pkg: 'com.google.android.calendar', app: 'Calendar', cat: 'event', title: 'Standup', held: false }),
   ],
   events: [
-    { t: now, rule: 'instagram-reels', pkg: 'com.instagram.android', action: 'back' },
-    { t: now, rule: 'instagram-reels', pkg: 'com.instagram.android', action: 'back' },
-    { t: now, rule: 'youtube-shorts', pkg: 'com.google.android.youtube', action: 'back' },
+    { t: now, rule: 'instagram', pkg: 'com.instagram.android', action: 'paused' },
+    { t: now, rule: 'instagram', pkg: 'com.instagram.android', action: 'left' },
+    { t: now, rule: 'instagram', pkg: 'com.instagram.android', action: 'paused' },
+    { t: now, rule: 'youtube', pkg: 'com.google.android.youtube', action: 'paused' },
   ],
 };
 
-test('summarize counts per app, held, withdrawn and rule fires', () => {
+test('summarize counts per app, held, withdrawn and actions per rule', () => {
   const s = summarize(7, logs, { generated: now, days: { [new Date().toISOString().slice(0, 10)]: { 'com.instagram.android': 3_600_000 } } });
   assert.equal(s.notifications.total, 4);
   assert.equal(s.notifications.held, 3);
   assert.deepEqual(s.notifications.topApps[0], { app: 'WhatsApp', count: 2, held: 2 });
   assert.equal(s.notifications.withdrawnByApp, 1);
-  assert.deepEqual(s.ruleFires[0], { rule: 'instagram-reels', count: 2 });
+  assert.deepEqual(s.ruleActions[0], { rule: 'instagram', paused: 2, left: 1 });
   assert.deepEqual(s.screenTimeMinutes, [{ pkg: 'com.instagram.android', minutes: 60 }]);
 });
 

@@ -6,16 +6,26 @@ final class SettingsTests: XCTestCase {
     func testSettingsDecode() throws {
         let json = #"""
         {"schemaVersion":1,"rules":[
-          {"id":"a","title":"A","enabled":true,"youtubeChannels":[{"name":"One","handle":"@one"},{"name":"Two","handle":"@two","id":"UCxxxxxxxxxxxxxxxxxxxxxx"}]},
-          {"id":"b","title":"B","enabled":false,"youtubeChannels":[{"name":"One again","handle":"@ONE"}]}],
+          {"id":"a","title":"A","enabled":true,"web":{"hosts":["a.com"]},"android":{"packages":["com.a"]}}],
+         "scroll":{"freeSeconds":120,"growth":1.5},
          "notifications":{"enabled":true,"deliverEvery":60,"deliverAt":["09:00"],"allow":[{"category":"event"}],"keepDays":30},
          "review":{"weekday":7,"time":"20:00"}}
         """#
         let rules = try RulesSnapshot(data: Data(json.utf8)).document
-        XCTAssertEqual(rules.youtubeChannels.map(\.handle), ["@one", "@two"])
+        XCTAssertEqual(rules.scroll?.freeSeconds, 120)
+        XCTAssertEqual(rules.scroll?.growth, 1.5)
+        XCTAssertEqual(rules.scroll?.firstPauseSeconds, 10)
+        XCTAssertEqual(rules.scroll?.maxPauseSeconds, 300)
+        XCTAssertEqual(rules.scroll?.resetMinutes, 15)
         XCTAssertEqual(rules.notifications?.deliverAt, ["09:00"])
         XCTAssertEqual(rules.notifications?.allow, [NotificationAllow(category: "event")])
         XCTAssertEqual(rules.review, ReviewSettings(weekday: 7, time: "20:00"))
+    }
+
+    func testScrollDefaultsWhenMissing() throws {
+        let rules = try RulesSnapshot(data: Data(#"{"schemaVersion":1,"rules":[],"scroll":{}}"#.utf8)).document
+        XCTAssertEqual(rules.scroll, ScrollSettings())
+        XCTAssertNil(try RulesSnapshot(data: Data(#"{"schemaVersion":1,"rules":[]}"#.utf8)).document.scroll)
     }
 
     func testAllowArgument() {
@@ -81,13 +91,13 @@ final class LauncherTests: XCTestCase {
     func testLauncherDecodeAndRuleApps() throws {
         let json = #"""
         {"schemaVersion":1,"rules":[
-          {"id":"ig","title":"Instagram Reels","enabled":true,"android":{"packages":["com.instagram.android"],"feed":[{"viewId":"x"}]}},
+          {"id":"ig","title":"Instagram","enabled":true,"android":{"packages":["com.instagram.android"]}},
           {"id":"tt","title":"TikTok","enabled":false,"android":{"packages":["com.zhiliaoapp.musically"]}},
-          {"id":"fb","title":"Facebook Reels","enabled":true,"web":{"hosts":["facebook.com"]}}],
+          {"id":"fb","title":"Facebook","enabled":true,"web":{"hosts":["facebook.com"]}}],
          "launcher":{"distracting":["com.twitter.android"],"hidden":[],"pauseSeconds":10}}
         """#
         let rules = try RulesSnapshot(data: Data(json.utf8)).document
         XCTAssertEqual(rules.launcher, LauncherSettings(distracting: ["com.twitter.android"], hidden: [], pauseSeconds: 10))
-        XCTAssertEqual(rules.launcherRuleApps.map { "\($0.rule): \($0.package)" }, ["Instagram Reels: com.instagram.android"])
+        XCTAssertEqual(rules.launcherRuleApps.map { "\($0.rule): \($0.package)" }, ["Instagram: com.instagram.android"])
     }
 }

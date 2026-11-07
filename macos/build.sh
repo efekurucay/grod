@@ -31,7 +31,7 @@ if [ -n "$NODE_PATH" ]; then
   /usr/libexec/PlistBuddy -c "Add :GrodNodePath string $NODE_PATH" "$PLIST"
   /usr/libexec/PlistBuddy -c "Add :GrodCLIPath string $REPO_DIR/tools/bin/grod.js" "$PLIST"
 else
-  echo "node not found: blocking channels from the browser and changing settings will be unavailable" >&2
+  echo "node not found: changing settings will be unavailable" >&2
 fi
 # The weekly review watches for the phone on adb.
 ADB_PATH="$(command -v adb || true)"

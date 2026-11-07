@@ -2,30 +2,25 @@
 
 <h1 align="center">grod</h1>
 
-<p align="center"><b>Get rid of distracting. Keep what matters.</b><br>Removes Reels, Shorts and other endless feeds. Keeps the rest of the app.</p>
+<p align="center"><b>Get rid of distracting. Keep what matters.</b><br>Scroll a feed for a minute, then wait. A little longer each time.</p>
 
 ---
 
-Blocking Instagram outright also blocks your friends' stories and your DMs, so the blocker gets turned off by Friday. grod takes out only the part that eats the evening: the infinite short-video feed. The rest of the app keeps working.
+Blocking Instagram outright also blocks your friends' stories and your DMs, so the blocker gets turned off by Friday. Blocking only the Reels tab does not work either: the home feed itself plays one video after another. grod does not care which part of the app you are in. It counts how long you scroll.
 
-| App | Gone | Still there |
-|---|---|---|
-| Instagram | Reels feed, reels in Explore, Reels tab (browser) | Stories, posts, DMs, search, profile grids; one at a time: a reel sent to you, your own reels, reels from accounts you follow |
-| YouTube | Shorts player, Shorts tab and shelves (browser) | Home, search, subscriptions, normal videos (a Short opens as a normal video on the web) |
-| TikTok | Everything (the whole app is the feed) | — |
-| Facebook (web) | Reels | Posts, groups, Messenger |
-| Snapchat | Spotlight | Chats, Stories |
-| Any YouTube channel you choose | Its videos everywhere: home, search, recommendations | Every other channel |
-
-One item is fine. **Swiping on to the next one is what grod stops.**
+- Scroll for a minute in Instagram, YouTube, TikTok, X, LinkedIn, Facebook or Snapchat, on your phone or in the browser, and a pause screen appears: wait 10 seconds, or leave.
+- Keep scrolling and the next pause is 20 seconds, then 40, 80, up to 5 minutes.
+- Put the phone down for 15 minutes and it starts short again.
+- Messages, posts you open, a video you watch, search: none of that is scrolling, so none of it is slowed down.
 
 It comes as **grod for Android**, **grod for Chrome** (any Chromium browser: Chrome, Comet, Arc, Brave, Edge), **grod for macOS** and the **grod CLI**. It is driven by one rules file, and you change that file by telling an AI agent what distracts you.
 
 ## Why it works this way
 
-- Removing a feed beats blocking the app or showing a screen-time dashboard. Taking the Facebook newsfeed out cut time on Facebook by 39–64% ([Purohit et al., CHI 2023](https://doi.org/10.1145/3544548.3581187); [Lyngs et al., CHI 2020](https://arxiv.org/abs/2001.04180)). Changing the interface raised people's sense of control, while usage dashboards did not ([Zhang et al., CHI 2022](https://doi.org/10.1145/3491102.3517722)).
-- The harm comes from fast switching between short clips. In one study, only short-form video hurt people's memory for planned tasks ([Chiossi et al., CHI 2023](https://doi.org/10.1145/3544548.3580778)).
-- A blocker that tells you what it did keeps being used. When interventions change without explanation, uninstalls nearly double ([Kovacs et al., CSCW 2018](https://doi.org/10.1145/3274364)). grod always says which rule acted and what stays usable.
+- People learn to ignore a pop-up that asks "are you sure?". Friction that grows the longer you scroll kept working longest in a 7-day study of short-video use ([Meinhardt et al., IMWUT 2026](https://arxiv.org/abs/2607.15818)).
+- A short delay with the option to back out is what changes the habit. With the one sec app, people backed out of about a third of openings and attempts fell by 57% over six weeks ([Grüning et al., PNAS 2023](https://doi.org/10.1073/pnas.2213114120)).
+- The harm comes from fast switching between short clips. In one study, only short-form video hurt people's memory for planned tasks ([Chiossi et al., CHI 2023](https://doi.org/10.1145/3544548.3580778)). Scrolling is that switching.
+- A blocker that explains itself keeps being used. When interventions change without explanation, uninstalls nearly double ([Kovacs et al., CSCW 2018](https://doi.org/10.1145/3274364)). The pause screen always says which app and how long you scrolled.
 
 [research/distraction-science.md](research/distraction-science.md) has the full reading list.
 
@@ -37,14 +32,14 @@ It comes as **grod for Android**, **grod for Chrome** (any Chromium browser: Chr
         grod CLI + MCP server: validate · save · push
       ┌────────────────────┼──────────────────────────┐
   macOS menu bar app    browser extension         Android app
-  serves the rules      hides shelves and tabs,   accessibility service:
-  on localhost          redirects Shorts,         leaves the Reels/Shorts feed
-                        blocks feed pages         with Back
+  serves the rules      counts scrolling,         accessibility service:
+  on localhost          shows the pause screen    counts scrolling,
+                                                  shows the pause screen
 ```
 
-- **Android:** an accessibility service watches only the apps listed in the rules. It recognizes screens by view ids and labels, and leaves a Reels or Shorts feed with Back the moment it opens; the tabs stay visible, so nothing on screen is darkened. Videos of blocked YouTube channels get an overlay that lets the page scroll.
-- **Browser:** a Manifest V3 extension with CSS hiding, redirects and blocked pages. It handles YouTube's and Instagram's in-page navigation.
-- **macOS:** a menu bar app with a Settings window. From it you can switch rules on and off, set notification batching, manage blocked channels and set the weekly review. A status row shows whether the phone is connected and up to date. The app also serves the current rules to the extension, so the extension updates without a reload.
+- **Android:** an accessibility service receives only scroll events from the apps in the rules. It cannot read the screen: window content access is off. When the time is up it shows a full-screen pause with a countdown and "Leave".
+- **Browser:** a Manifest V3 extension. It counts scrolling on the sites in the rules, shows the same pause inside the page and pauses videos. It also opens a Short as a normal video and keeps a few pure-feed pages (Instagram `/reels`, TikTok) closed.
+- **macOS:** a menu bar app with a Settings window. From it you can switch rules on and off, tune the scroll pause, set notification batching and the weekly review. A status row shows whether the phone is connected and up to date. The app also serves the current rules to the extension, so the extension updates without a reload.
 - **Agent:** the `grod` CLI and an MCP server. The rules are validated against a JSON Schema before every save.
 
 Details: [docs/architecture.md](docs/architecture.md) and [docs/rules.md](docs/rules.md).
@@ -84,29 +79,24 @@ The script builds and installs the app and switches its accessibility service on
 
 Open this repo in [Claude Code](https://claude.com/claude-code). The `grod` MCP server is already configured in `.mcp.json`. Then just say what distracts you:
 
-> "X's Explore page has been pulling me in lately, block it."
-> "Reels are back on my phone."
-> "Block this channel: https://youtu.be/…"
+> "Reddit has been pulling me in lately, add it."
+> "The pause comes too late, make it 30 seconds."
+> "LinkedIn is fine, take it out."
 
-The `grod-block` skill finds stable hooks: CSS selectors on the web, view ids on Android (taken from a screen dump while the phone is on adb). It writes and validates the rule and pushes it out. **Nothing needs a rebuild or a reload.** The macOS app picks up a change in about 2 seconds, the extension within a minute, and a phone on adb (USB or Wi-Fi) within seconds.
+A rule only names an app's Android package and its websites, so adding one takes the agent a few seconds. It validates the rule and pushes it out. **Nothing needs a rebuild or a reload.** The macOS app picks up a change in about 2 seconds, the extension within a minute, and a phone on adb (USB or Wi-Fi) within seconds.
 
 By hand:
 
 ```sh
-grod list                       # what is blocked where
-grod disable tiktok             # enable / disable / remove / add rule.json
-grod channel add @somechannel   # or a video or channel link
-grod channel list
+grod list                       # which apps and sites count
+grod disable linkedin           # enable / disable / remove / add rule.json
+grod scroll                     # pause settings
+grod scroll free 30             # pause after 30 s of scrolling
+grod scroll growth 3            # 10 s, 30 s, 90 s, …
 grod sync                       # push again, e.g. after plugging the phone in
 ```
 
-### Blocking a YouTube channel
-
-- **Browser:** a video's ⋮ menu → *grod: Block channel*, or right-click a video or channel link.
-- **Phone:** YouTube → Share → *grod: block channel*.
-- **Agent or terminal:** `grod channel add <link | @handle>`.
-
-The channel's videos disappear from home, search and recommendations. If one is opened anyway, grod stops it and leaves the page.
+To keep one YouTube channel out of your feed, use YouTube's own *Don't recommend channel* in the video's ⋮ menu. It follows your account to every device.
 
 ## Notifications, delivered on the hour (Android)
 
@@ -129,24 +119,24 @@ Once a week (Sunday 20:00 by default), the phone asks to be connected. Plug it i
 
 ## Your own data, for your agent
 
-Every notification, every time a rule acts, and screen time per app are logged on the phone (format: [docs/data.md](docs/data.md)). Ask Claude *"what's been distracting me this week?"* The `grod-review` skill reads the data over adb (`phone_stats`) and suggests at most three changes, each backed by a number. You decide which to apply.
+Every notification, every scroll pause and what you did after it, and screen time per app are logged on the phone (format: [docs/data.md](docs/data.md)). Ask Claude *"what's been distracting me this week?"* The `grod-review` skill reads the data over adb (`phone_stats`) and suggests at most three changes, each backed by a number. You decide which to apply.
 
 ## Privacy
 
 - Nothing leaves your devices. There are no accounts, no analytics and no server.
-- The Android service acts only inside the apps named in the rules. While one of its overlays is on screen, it also listens to other apps, but only to notice that you left so it can remove the overlay. It matches view ids and the labels a rule names (for YouTube channels, the tile descriptions). It does not store or send anything it sees.
+- The Android service receives only scroll and window-change events from the apps named in the rules. It cannot read the screen: window content access is off. It does not store or send anything except the pause log below.
 - Network use:
   - The extension talks only to `127.0.0.1`.
-  - The Android app goes online only for an optional rules URL you set yourself, and for resolving a channel you share to it (YouTube oEmbed).
+  - The Android app goes online only for an optional rules URL you set yourself.
   - If you turn on launcher weather (`launcher.weather`), the launcher fetches weather from Open-Meteo with a rounded location, at most hourly; deny the location prompt to turn it off.
-- The phone logs notifications, rule actions and screen time in the app's private storage. Logs are deleted after `keepDays` (30 by default), and only adb on your own computer can read them.
+- The phone logs notifications, scroll pauses and screen time in the app's private storage. Logs are deleted after `keepDays` (30 by default), and only adb on your own computer can read them.
 
 ## Limits
 
-- Apps rename views and sites change their markup, so rules need upkeep. When something slips through, tell the agent. [research/](research/) records where each selector and id came from.
-- The Android YouTube rules match English UI labels.
+- Scrolling counts everywhere in a listed app, including a long DM thread. Each scroll event counts at most 5 seconds, so slow reading costs little.
+- Watching without scrolling is not slowed down: one long video, or Reels left looping on one clip.
 - There is no iOS version and no Play Store build. The app is installed with adb.
-- Tested on one Android 10 phone (EMUI 12) with Instagram 453 and YouTube 21.43, and in Chrome 157.
+- Tested on one Android 10 phone (EMUI 12) and in Chrome 157.
 
 ## Repository
 
@@ -158,7 +148,7 @@ Every notification, every time a rule acts, and screen time per app are logged o
 | `android/` | Kotlin app, no runtime dependencies (≈0.9 MB) |
 | `macos/` | Swift menu bar app |
 | `ui/` | grod UI: calm tokens and components |
-| `research/` | Evidence and selector sources |
+| `research/` | Evidence behind the design |
 | `docs/` | Architecture and rule behavior |
 
 Checks:

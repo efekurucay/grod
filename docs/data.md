@@ -16,10 +16,11 @@ One JSON object per line. The newest day is plain text and older days are gzippe
 - `e`: `posted` or `removed`. `reason` on removals: `app` (the app withdrew it, for example a deleted message), `user`, `delivered` (grod released it), `other`.
 - `held`: true when grod snoozed it to the next delivery.
 
-`events-YYYY-MM-DD.jsonl`, one line each time a rule acts:
+`events-YYYY-MM-DD.jsonl`, one line each time grod acts. A scroll pause logs `paused` when it appears and `left` or `continued` when it ends; the launcher logs `opened` or `backed-out` for a distracting app (`rule: "launcher"`).
 
 ```json
-{"t":1762394400123,"rule":"instagram-reels","pkg":"com.instagram.android","action":"back"}
+{"t":1762394400123,"rule":"instagram","pkg":"com.instagram.android","action":"paused"}
+{"t":1762394410456,"rule":"instagram","pkg":"com.instagram.android","action":"left"}
 ```
 
 ## Export

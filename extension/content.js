@@ -2,91 +2,91 @@
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
   const core = globalThis.grodCore;
-  const youtube = core.isYouTube(location.hostname);
-  // Parsing a selector against an empty fragment validates it without scanning the page.
-  const probe = document.createDocumentFragment();
-  const check = (selector) => probe.querySelector(selector);
-  const TILE = core.channelTiles.join(', ');
-  const OWNER_LINKS = '#owner a[href], ytm-slim-owner-renderer a[href]';
-  // Logged-out users get the Polymer listbox, logged-in users the view-model list.
-  const MENU_LISTS = 'ytd-popup-container tp-yt-paper-listbox, ytd-popup-container yt-list-view-model';
-  const MENU_CSS = `.grod-menu-item { display: flex; align-items: center; min-height: 36px; padding: 0 16px;
-  font: 400 14px/20px Roboto, Arial, sans-serif; color: var(--yt-spec-text-primary, inherit); cursor: pointer; }
-.grod-menu-item:hover, .grod-menu-item:focus { background: var(--yt-spec-10-percent-layer, rgba(128, 128, 128, 0.15)); outline: none; }`;
+  const PAUSE_URL = api.runtime.getURL('pause.html');
+  // Scroll events fire many times a second. One message per interval adds up to the same time, because the
+  // background counts the time between messages; at most this much is lost at the end of each burst.
+  const SEND_EVERY_MS = 250;
+  const OVERLAY_CSS = `:host { all: initial !important; display: block !important; position: fixed !important;
+  inset: 0 !important; z-index: 2147483647 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; }
+iframe { display: block; width: 100%; height: 100%; margin: 0; border: 0; }`;
 
-  let stored = null;
-  let pending = [];
   let rules = [];
-  let channels = [];
-  let hiddenList = '';
-  let style = null;
   let lastHref = '';
   let watching = false;
-  // The owner link renders after a watch page loads, so it is checked until this time after each navigation.
-  let ownerUntil = 0;
+  let lastSent = 0;
+  // { host, frame } while the pause screen shows.
+  let overlay = null;
 
   function send(message) {
     // A script orphaned by an extension reload has no runtime left; the next page load gets a fresh one.
-    Promise.resolve()
+    return Promise.resolve()
       .then(() => api.runtime.sendMessage(message))
-      .catch(() => {});
+      .catch(() => null);
   }
 
-  function apply() {
+  function apply(stored) {
     rules = stored ? core.rulesForHost(stored.file, location.hostname) : [];
-    channels = youtube ? core.youtubeChannels(stored?.file, pending) : [];
-    const selectors = [
-      ...core.hideSelectors(rules, check),
-      ...core.validSelectors(core.channelSelectors(channels), check),
-    ];
-    hiddenList = selectors.join(',');
-    if (selectors.length || style || youtube) {
-      style ??= document.createElement('style');
-      style.textContent = core.css(selectors) + (youtube ? '\n' + MENU_CSS : '');
-      if (!style.isConnected) document.documentElement.append(style);
-    }
-    if (!rules.length && !channels.length) return;
+    if (!rules.length) return;
     if (!watching) watch();
     lastHref = '';
     tick();
   }
 
-  // display:none does not stop playback, so audio of a hidden reel would keep going.
-  function pauseIfHidden(video) {
-    if (hiddenList && !video.paused && video.closest(hiddenList)) video.pause();
-  }
-
-  function block(rule) {
-    ownerUntil = 0;
-    send({ type: 'block', rule: rule.id, from: location.href });
-  }
-
   function route() {
     const decision = core.decide(rules, location.pathname + location.search);
-    if (decision?.action === 'redirect') {
-      send({ type: 'fired', rule: decision.rule.id });
-      location.replace(location.origin + decision.target);
-      return;
-    }
-    if (decision) return block(decision.rule);
-    const channel = core.channelForPath(channels, location.pathname);
-    if (channel) return block(channel.rule);
-    ownerUntil = location.pathname === '/watch' && channels.length ? Date.now() + 8000 : 0;
-  }
-
-  function checkOwner() {
-    for (const link of document.querySelectorAll(OWNER_LINKS)) {
-      const channel = core.channelForPath(channels, link.pathname);
-      if (channel) return block(channel.rule);
-    }
+    if (decision?.action === 'redirect') location.replace(location.origin + decision.target);
+    else if (decision) send({ type: 'block', rule: decision.rule.id, from: location.href });
   }
 
   function tick() {
-    for (const video of document.getElementsByTagName('video')) pauseIfHidden(video);
-    if (ownerUntil > Date.now()) checkOwner();
+    // A site that re-renders the whole document can drop the overlay; it goes back until "Continue".
+    if (overlay && !overlay.host.isConnected) mount();
     if (location.href === lastHref) return;
     lastHref = location.href;
     route();
+  }
+
+  // The pause screen is an extension page in an iframe under a closed shadow root: the site's CSS cannot restyle it,
+  // its scripts cannot reach into it, and every click lands on it. The popover top layer keeps it above the site's
+  // own stacking contexts; the z-index covers browsers without popover.
+  function showPause(pause) {
+    const host = document.createElement('div');
+    host.setAttribute('popover', 'manual');
+    const root = host.attachShadow({ mode: 'closed' });
+    const style = document.createElement('style');
+    style.textContent = OVERLAY_CSS;
+    const frame = document.createElement('iframe');
+    frame.src = `${PAUSE_URL}?${new URLSearchParams({ rule: pause.rule, until: pause.until, total: pause.total })}`;
+    root.append(style, frame);
+    overlay = { host, frame };
+    mount();
+    for (const video of document.getElementsByTagName('video')) video.pause();
+  }
+
+  function mount() {
+    document.documentElement.append(overlay.host);
+    overlay.host.showPopover?.();
+    overlay.frame.focus();
+  }
+
+  function onScroll() {
+    if (overlay || !rules.length || document.visibilityState !== 'visible') return;
+    const now = Date.now();
+    if (now - lastSent < SEND_EVERY_MS) return;
+    lastSent = now;
+    send({ type: 'scroll', rule: rules[0].id }).then((pause) => {
+      if (pause && !overlay) showPause(pause);
+    });
+  }
+
+  // Only the pause frame itself can end the pause; the site cannot post as that window.
+  function onFrameMessage(event) {
+    if (!overlay || event.source !== overlay.frame.contentWindow) return;
+    if (event.data === 'grod:continue') {
+      overlay.host.remove();
+      overlay = null;
+    }
+    if (event.data === 'grod:leave') send({ type: 'leave' });
   }
 
   function watch() {
@@ -100,90 +100,22 @@
       lastHref = '';
       tick();
     });
+    // scroll does not bubble; capturing on document sees the window's scroll and every element's.
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
     document.addEventListener(
       'play',
       (event) => {
-        if (event.target.tagName === 'VIDEO') pauseIfHidden(event.target);
+        if (overlay && event.target.tagName === 'VIDEO') event.target.pause();
       },
       true,
     );
+    addEventListener('message', onFrameMessage);
     // Firefox content scripts may lack the Navigation API, and some SPAs change the URL without any event we see.
     setInterval(tick, 500);
   }
 
-  // The clicked link first, so right-clicking a channel name picks that channel over the tile's others.
-  function channelOf(element) {
-    const link = element.closest('a[href]');
-    const tileLinks = element.closest(TILE)?.querySelectorAll('a[href]') ?? [];
-    const links = [...(link ? [link] : []), ...tileLinks];
-    return core.channelFromLinks(links.map((a) => ({ href: a.getAttribute('href'), text: a.textContent })));
-  }
-
-  function closeMenu() {
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
-  }
-
-  function menuItem(channel) {
-    const item = document.createElement('div');
-    item.className = 'grod-menu-item';
-    item.setAttribute('role', 'menuitem');
-    item.tabIndex = 0;
-    item.textContent = document.documentElement.lang.startsWith('tr') ? 'grod: Kanalı engelle' : 'grod: Block channel';
-    item.addEventListener('click', (event) => {
-      event.stopPropagation();
-      item.remove();
-      send({ type: 'channel', channel });
-      closeMenu();
-    });
-    item.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') item.click();
-    });
-    return item;
-  }
-
-  // YouTube opens and fills the popup after the click and may re-render it, so the item is (re)placed for a short while.
-  // It goes before the list, not inside it: the list treats its children as YouTube menu items.
-  let offerTimer = 0;
-  function offerMenuItem(channel) {
-    let tries = 0;
-    offerTimer = setInterval(() => {
-      const list = [...document.querySelectorAll(MENU_LISTS)].find((el) => el.checkVisibility());
-      if (list && !list.parentElement.querySelector(':scope > .grod-menu-item')) list.before(menuItem(channel));
-      if (++tries === 20) clearInterval(offerTimer);
-    }, 100);
-  }
-
-  function setupChannelBlocking() {
-    let contextChannel = null;
-    document.addEventListener(
-      'pointerdown',
-      (event) => {
-        if (event.target.closest('.grod-menu-item')) return;
-        clearInterval(offerTimer);
-        for (const item of document.querySelectorAll('.grod-menu-item')) item.remove();
-        const tile = event.target.closest('button, yt-icon-button, [role="button"]')?.closest(TILE);
-        const channel = tile && channelOf(tile);
-        if (channel) offerMenuItem(channel);
-      },
-      true,
-    );
-    document.addEventListener('contextmenu', (event) => (contextChannel = channelOf(event.target)), true);
-    // The background's context menu click asks which channel the right-clicked element belongs to.
-    api.runtime.onMessage.addListener((message, _sender, respond) => {
-      if (message?.type === 'context-channel') respond(contextChannel);
-    });
-  }
-
-  if (youtube) setupChannelBlocking();
-  api.storage.local.get(['rules', 'pendingChannels']).then((items) => {
-    stored = items.rules ?? null;
-    pending = items.pendingChannels ?? [];
-    apply();
-  });
+  api.storage.local.get('rules').then((items) => apply(items.rules ?? null));
   api.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !(changes.rules || changes.pendingChannels)) return;
-    if (changes.rules) stored = changes.rules.newValue ?? null;
-    if (changes.pendingChannels) pending = changes.pendingChannels.newValue ?? [];
-    apply();
+    if (area === 'local' && changes.rules) apply(changes.rules.newValue ?? null);
   });
 })();

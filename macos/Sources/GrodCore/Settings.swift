@@ -1,14 +1,6 @@
 import Foundation
 
 extension Rules {
-    /// Blocked channels across every rule, once per handle; `grod channel remove <@handle>` removes them all.
-    public var youtubeChannels: [YouTubeChannel] {
-        var seen = Set<String>()
-        return rules.flatMap { $0.youtubeChannels ?? [] }.filter { seen.insert($0.handle.lowercased()).inserted }
-    }
-}
-
-extension Rules {
     /// Packages the launcher treats as distracting because an enabled rule covers them (docs/rules.md "Launcher").
     public var launcherRuleApps: [(rule: String, package: String)] {
         rules.filter(\.enabled).flatMap { rule in (rule.android?.packages ?? []).map { (rule.title, $0) } }

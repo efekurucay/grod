@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- packageNames is set at runtime from the active rules, so a rules update needs no rebuild. -->
+<!-- packageNames is set at runtime from the active rules, so a rules update needs no rebuild.
+     notificationTimeout is 0: the framework holds events of one type until none came for that long,
+     so during steady scrolling a longer timeout delivers almost nothing. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewScrolled"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeViewScrolled"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
-    android:canPerformGestures="true"
-    android:canRetrieveWindowContent="true"
+    android:canRetrieveWindowContent="false"
     android:description="@string/service_description"
-    android:notificationTimeout="200"
+    android:notificationTimeout="0"
     android:settingsActivity="dev.grod.MainActivity" />

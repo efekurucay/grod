@@ -1,6 +1,6 @@
 # grod browser extension
 
-One extension for Chrome, Chromium-based browsers (Arc, Brave, Edge) and Firefox. It applies the Web part of `rules/grod.rules.json` (see `docs/rules.md`): hides feed elements, redirects (Shorts → normal player), and blocks feed routes with a calm page that offers "Go back".
+One extension for Chrome, Chromium-based browsers (Arc, Brave, Edge) and Firefox. It applies `rules/grod.rules.json` to the browser (see `docs/rules.md`, "Scroll pause" and "Web links"): scrolling on the sites of enabled rules is paused every so often, longer each time; feed-only URLs are redirected (Shorts → normal player) or blocked with a calm page that offers "Go back".
 
 ## Load
 
@@ -12,18 +12,20 @@ One extension for Chrome, Chromium-based browsers (Arc, Brave, Edge) and Firefox
 - With the grod macOS app running, the extension reads `http://127.0.0.1:47770/rules.json` at startup and every minute. Changes apply to open tabs without a reload.
 - Without it, run `grod sync` (writes `extension/rules.json`), then reload the extension.
 
-## Blocking a YouTube channel
+## Scroll pause
 
-Open a video's ⋮ menu → "grod: Block channel", or right-click a video or channel link → "grod: Block channel". The channel's tiles disappear at once and its channel and watch pages show the blocked page. The extension sends it to the macOS app, which adds it to the rules file so the phone gets it on the next sync; until then it stays in the extension as pending and is retried every minute. Removing a channel: `grod channel remove <@handle>`.
+The content script listens for `scroll` on the document (capturing, so element scrollers count as well as the window) on hosts of enabled rules, while the tab is visible, and tells the background at most every 250 ms. The background keeps one session for the whole browser in `storage.session`, so it is shared by all tabs, survives service worker restarts and ends when the browser quits. Timings come from the `scroll` object of the rules file.
 
-The popup shows the active revision, where it came from (`localhost` or `bundled`), the last fetch, each rule's fire count, which rules apply to the current tab, and the blocked channels.
+When a pause is due, the tab that scrolled shows the pause screen (`pause.html`) in an iframe inside a closed shadow root, in the top layer: the site's CSS cannot restyle it and clicks cannot reach the site. It shows the rule's title and `why`, the time scrolled this session and a countdown. Videos on the page are paused while it shows. "Leave" closes the tab; "Continue" appears when the countdown ends. Any other tab of a rule's sites that scrolls before the countdown ends shows the same pause, so a reload or a new tab is no way around it.
+
+The popup shows the active revision, where it came from (`localhost` or `bundled`), the last fetch, which rules apply to the current tab, and how many pauses each rule has caused.
 
 ## Test
 
 ```sh
 npm test       # rules logic against the real rules file
 npm run check  # manifest.json and rules.json parse
-npm i && CHROME="<Chrome for Testing binary>" npm run e2e   # real browser: YouTube, Instagram, TikTok
+npm i && CHROME="<Chrome for Testing binary>" npm run e2e   # real browser: YouTube, Instagram, TikTok, scroll pause
 ```
 
-`npm run e2e` needs Chrome for Testing (`npx @puppeteer/browsers install chrome@stable`), because branded Chrome ignores `--load-extension`. Run it after changing Web rules or the content script.
+`npm run e2e` needs Chrome for Testing (`npx @puppeteer/browsers install chrome@stable`), because branded Chrome ignores `--load-extension`. It never reaches the grod macOS app (plain http goes to a dead proxy), and the scroll pause runs on a test page served by the test itself with a short `freeSeconds`. Run it after changing Web rules, the content script or the pause screen.

@@ -61,7 +61,7 @@ updated="${others:+$others:}$SERVICE"
 adb shell settings put secure enabled_accessibility_services "$updated"
 echo "    enabled (services: $updated)"
 # Apps that were running while accessibility was briefly off (YouTube, Instagram, …) keep a stale
-# accessibility state until they restart: no tile descriptions, no tab covers. Restart every target app.
+# accessibility state until they restart, so their scroll events may not arrive. Restart every target app.
 targets="$(node -e 'const r=require("../rules/grod.rules.json");console.log([...new Set(r.rules.flatMap(x=>x.android?.packages??[]))].join(" "))' 2>/dev/null || echo "com.google.android.youtube com.instagram.android")"
 for app in $targets; do
   adb shell am force-stop "$app"

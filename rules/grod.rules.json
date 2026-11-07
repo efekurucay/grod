@@ -3,28 +3,32 @@
   "schemaVersion": 1,
   "rules": [
     {
-      "id": "youtube-shorts",
-      "title": "YouTube Shorts",
-      "why": "Shorts is an endless feed. Search, subscriptions and normal videos stay.",
+      "id": "instagram",
+      "title": "Instagram",
+      "why": "Scrolling Instagram pauses you every minute, a little longer each time. Stories, posts and DMs stay.",
+      "enabled": true,
+      "web": {
+        "hosts": [
+          "instagram.com"
+        ],
+        "block": [
+          "^/reels(/|\\?|$)"
+        ]
+      },
+      "android": {
+        "packages": [
+          "com.instagram.android"
+        ]
+      }
+    },
+    {
+      "id": "youtube",
+      "title": "YouTube",
+      "why": "Scrolling YouTube pauses you every minute, a little longer each time. Search and videos stay; a Short opens as a normal video on the web.",
       "enabled": true,
       "web": {
         "hosts": [
           "youtube.com"
-        ],
-        "hide": [
-          "ytd-rich-section-renderer:has(a[href^=\"/shorts/\"])",
-          "ytd-rich-shelf-renderer[is-shorts]",
-          "ytd-reel-shelf-renderer",
-          "ytd-guide-entry-renderer:has(a[title=\"Shorts\"])",
-          "ytd-mini-guide-entry-renderer:has(a[title=\"Shorts\"])",
-          "ytd-video-renderer:has(a[href^=\"/shorts/\"])",
-          "grid-shelf-view-model:has(a[href^=\"/shorts/\"])",
-          "ytd-notification-renderer:has(> a[href^=\"/shorts/\"])",
-          "yt-tab-shape[tab-title=\"Shorts\"]",
-          "ytm-pivot-bar-item-renderer:has(.pivot-shorts)",
-          "ytm-reel-shelf-renderer",
-          "grid-shelf-view-model:has(ytm-shorts-lockup-view-model)",
-          "ytm-video-with-context-renderer:has(.big-shorts-singleton)"
         ],
         "redirect": [
           {
@@ -37,63 +41,13 @@
         "packages": [
           "com.google.android.youtube",
           "app.revanced.android.youtube"
-        ],
-        "feed": [
-          {
-            "viewId": "reel_player_page_container"
-          },
-          {
-            "viewId": "reel_watch_player"
-          }
-        ],
-        "action": "back"
-      }
-    },
-    {
-      "id": "instagram-reels",
-      "title": "Instagram Reels",
-      "why": "Reels is an endless feed. Stories, posts and DMs stay; a reel someone sends you, your own reels and reels from accounts you follow play one at a time.",
-      "enabled": true,
-      "web": {
-        "hosts": [
-          "instagram.com"
-        ],
-        "hide": [
-          "a[href=\"/reels/\"]",
-          "main[role=\"main\"]:has([data-virtualized] video)"
-        ],
-        "block": [
-          "^/reels(/|\\?|$)"
         ]
-      },
-      "android": {
-        "packages": [
-          "com.instagram.android"
-        ],
-        "feed": [
-          {
-            "viewId": "clips_viewer_view_pager"
-          }
-        ],
-        "exempt": [
-          {
-            "viewId": "reply_bar_container"
-          },
-          {
-            "viewId": "reel_viewer_message_composer"
-          },
-          {
-            "viewId": "clips_viewer_action_bar_title",
-            "text": "Your reels"
-          }
-        ],
-        "action": "back"
       }
     },
     {
       "id": "tiktok",
       "title": "TikTok",
-      "why": "The whole app is the feed, so the whole app goes.",
+      "why": "TikTok is all feed. The website stays closed; in the app, scrolling pauses you every minute.",
       "enabled": true,
       "web": {
         "hosts": [
@@ -107,53 +61,80 @@
         "packages": [
           "com.zhiliaoapp.musically",
           "com.ss.android.ugc.trill"
-        ],
-        "action": "home"
+        ]
       }
     },
     {
-      "id": "facebook-reels",
-      "title": "Facebook Reels",
-      "why": "Reels is an endless feed. Posts, groups and Messenger stay.",
+      "id": "facebook",
+      "title": "Facebook",
+      "why": "Scrolling Facebook pauses you every minute, a little longer each time. Groups and Messenger stay.",
       "enabled": true,
       "web": {
         "hosts": [
           "facebook.com"
         ],
-        "hide": [
-          "a[href=\"/reel/\"]",
-          "a[href^=\"/reel/\"][href$=\"see_more\"]"
-        ],
         "block": [
           "^/reel/"
+        ]
+      },
+      "android": {
+        "packages": [
+          "com.facebook.katana"
         ]
       }
     },
     {
-      "id": "snapchat-spotlight",
-      "title": "Snapchat Spotlight",
-      "why": "Spotlight is an endless feed. Chats and Stories stay.",
+      "id": "snapchat",
+      "title": "Snapchat",
+      "why": "Scrolling Snapchat pauses you every minute, a little longer each time. Chats and Stories stay.",
       "enabled": true,
       "android": {
         "packages": [
           "com.snapchat.android"
-        ],
-        "feed": [
-          {
-            "viewId": "spotlight_container"
-          }
-        ],
-        "action": "back"
+        ]
       }
     },
     {
-      "id": "youtube-channels",
-      "title": "Blocked YouTube channels",
-      "why": "You blocked this channel. Everything else on YouTube stays.",
+      "id": "x",
+      "title": "X",
+      "why": "Scrolling X pauses you every minute, a little longer each time. Posts and messages stay.",
       "enabled": true,
-      "youtubeChannels": []
+      "web": {
+        "hosts": [
+          "x.com",
+          "twitter.com"
+        ]
+      },
+      "android": {
+        "packages": [
+          "com.twitter.android"
+        ]
+      }
+    },
+    {
+      "id": "linkedin",
+      "title": "LinkedIn",
+      "why": "Scrolling the LinkedIn feed pauses you every minute, a little longer each time. Messages, jobs and profiles stay.",
+      "enabled": true,
+      "web": {
+        "hosts": [
+          "linkedin.com"
+        ]
+      },
+      "android": {
+        "packages": [
+          "com.linkedin.android"
+        ]
+      }
     }
   ],
+  "scroll": {
+    "freeSeconds": 60,
+    "firstPauseSeconds": 10,
+    "growth": 2,
+    "maxPauseSeconds": 300,
+    "resetMinutes": 15
+  },
   "notifications": {
     "enabled": true,
     "deliverEvery": 60,
