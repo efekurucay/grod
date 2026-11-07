@@ -78,8 +78,8 @@ final class WeeklyReviewTests: XCTestCase {
     }
 
     func testReadyDevices() {
-        let output = "List of devices attached\n6KK7N19314002478\tdevice\n192.168.1.5:5555\toffline\nABC\tunauthorized\n10.0.0.2:5555\tdevice\n\n"
-        XCTAssertEqual(WeeklyReview.readyDevices(adbOutput: output), ["6KK7N19314002478", "10.0.0.2:5555"])
+        let output = "List of devices attached\nR58M12ABCDE\tdevice\n192.168.1.5:5555\toffline\nABC\tunauthorized\n10.0.0.2:5555\tdevice\n\n"
+        XCTAssertEqual(WeeklyReview.readyDevices(adbOutput: output), ["R58M12ABCDE", "10.0.0.2:5555"])
         XCTAssertEqual(WeeklyReview.readyDevices(adbOutput: "List of devices attached\n\n"), [])
         XCTAssertEqual(WeeklyReview.readyDevices(adbOutput: "* daemon started successfully\nList of devices attached\nX\tdevice\n").count, 1)
     }

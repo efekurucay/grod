@@ -164,3 +164,7 @@ cd extension && npm test        # npm run e2e runs a real Chrome, see extension/
 cd macos && swift test
 cd android && ./gradlew testDebugUnitTest assembleDebug
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE).

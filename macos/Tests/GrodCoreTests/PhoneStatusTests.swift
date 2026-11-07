@@ -4,9 +4,9 @@ import XCTest
 
 final class PhoneStatusTests: XCTestCase {
     func testLinkFromSerial() {
-        XCTAssertEqual(PhoneStatus.Link(serial: "6KK7N19314002478"), .usb)
+        XCTAssertEqual(PhoneStatus.Link(serial: "R58M12ABCDE"), .usb)
         XCTAssertEqual(PhoneStatus.Link(serial: "192.168.1.5:5555"), .wifi)
-        XCTAssertEqual(PhoneStatus.Link(serial: "adb-6KK7N-abc._adb-tls-connect._tcp"), .usb)
+        XCTAssertEqual(PhoneStatus.Link(serial: "adb-R58M1-abc._adb-tls-connect._tcp"), .usb)
     }
 
     func testPhoneRevision() {
