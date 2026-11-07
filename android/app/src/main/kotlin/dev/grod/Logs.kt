@@ -3,6 +3,7 @@ package dev.grod
 import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -10,6 +11,7 @@ import java.time.temporal.ChronoUnit
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import org.json.JSONObject
 
@@ -29,11 +31,16 @@ object LogLines {
 
 /** Which log files to compress and delete; pure, so pruning is unit tested. */
 object LogFiles {
-    private val NAME = Regex("""^[a-z]+-(\d{4}-\d{2}-\d{2})\.jsonl(\.gz)?$""")
+    private val NAME = Regex("""^([a-z]+)-(\d{4}-\d{2}-\d{2})\.jsonl(\.gz)?$""")
 
     data class Plan(val gzip: List<String>, val delete: List<String>)
 
     fun name(kind: String, date: LocalDate): String = "$kind-$date.jsonl"
+
+    /** "notifications" for notifications-2026-11-06.jsonl.gz; null for anything that is not a log file. */
+    fun kind(name: String): String? = NAME.matchEntire(name)?.groupValues?.get(1)
+
+    fun date(name: String): LocalDate? = NAME.matchEntire(name)?.groupValues?.get(2)?.let(LocalDate::parse)
 
     /** Files [keepDays] or more days old go; past days that are still plain text get gzipped. */
     fun plan(names: Collection<String>, today: LocalDate, keepDays: Int): Plan {
@@ -41,10 +48,10 @@ object LogFiles {
         val delete = ArrayList<String>()
         for (name in names.sorted()) {
             val m = NAME.matchEntire(name) ?: continue
-            val age = ChronoUnit.DAYS.between(LocalDate.parse(m.groupValues[1]), today)
+            val age = ChronoUnit.DAYS.between(LocalDate.parse(m.groupValues[2]), today)
             when {
                 age >= keepDays -> delete.add(name)
-                age > 0 && m.groupValues[2].isEmpty() -> gzip.add(name)
+                age > 0 && m.groupValues[3].isEmpty() -> gzip.add(name)
             }
         }
         return Plan(gzip, delete)
@@ -74,6 +81,12 @@ class LogWriter(
             File(dir, LogFiles.name(kind, today)).appendText(line + "\n")
         }
     }
+
+    /**
+     * Runs [task] with the log dir on the writer thread, so a read sees only whole lines and a
+     * rewrite never races an append. Never blocks the caller.
+     */
+    fun onLogThread(task: (File) -> Unit) = executor.execute { task(dir) }
 
     /** Copies every log file into [target], on the writer thread so no half-written line is copied. */
     fun copyTo(target: File) {
@@ -108,5 +121,41 @@ class LogWriter(
             File(context.applicationContext.filesDir, "log"),
             Executors.newSingleThreadExecutor { Thread(it, "grod-log").apply { isDaemon = true } },
         ).also { instance = it }
+    }
+}
+
+/** Reads and rewrites log files; only on the writer thread ([LogWriter.onLogThread]). */
+class LogFolder(private val dir: File) {
+    /** The files of [kind], oldest day first. */
+    fun names(kind: String): List<String> = dir.list()?.filter { LogFiles.kind(it) == kind }?.sorted().orEmpty()
+
+    fun read(name: String): List<String> {
+        val file = File(dir, name)
+        if (!file.exists()) return emptyList()
+        // A .gz may hold several gzip members (see LogWriter.tidy); GZIPInputStream reads them as one stream.
+        val stream = if (name.endsWith(".gz")) GZIPInputStream(file.inputStream()) else file.inputStream()
+        return stream.bufferedReader().useLines { lines -> lines.filter { it.isNotBlank() }.toList() }
+    }
+
+    /** Every line of [kind] logged on [date], the gzipped part first. */
+    fun read(kind: String, date: LocalDate): List<String> = LogFiles.name(kind, date).let { read("$it.gz") + read(it) }
+
+    /**
+     * Replaces [name] with [lines] through a temp file and a rename, so a crash leaves either the old
+     * or the new file, never half of one. No lines deletes the file.
+     */
+    fun write(name: String, lines: List<String>) {
+        val file = File(dir, name)
+        if (lines.isEmpty()) {
+            file.delete()
+            return
+        }
+        val tmp = File(dir, "$name.tmp")
+        val out = FileOutputStream(tmp).let { if (name.endsWith(".gz")) GZIPOutputStream(it) else it }
+        out.bufferedWriter().use { w -> lines.forEach { w.write(it); w.write("\n") } }
+        if (!tmp.renameTo(file)) {
+            tmp.delete()
+            throw IOException("Could not replace $name")
+        }
     }
 }

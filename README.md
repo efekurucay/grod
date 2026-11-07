@@ -113,6 +113,8 @@ Or tell Claude: *"WhatsApp messages from my mom should come through right away."
 
 The phone keeps 30 days of notification history, so a message deleted for everyone can still be found: `grod phone search <text> --withdrawn`.
 
+The app's Notifications tab shows the same history, newest first, with search and an app filter. Swipe a row left to delete it; delete an app's, a conversation's or a day's notifications, everything older than 7 days, or all of it, after a confirm.
+
 ## Weekly review
 
 Once a week (Sunday 20:00 by default), the phone asks to be connected. Plug it in, or keep it on Wi-Fi adb. The Mac saves the week's numbers to `~/.config/grod/reviews/` and shows *Weekly review ready*. Click it, and Claude Code opens with the `grod-review` skill. It compares the week with the previous ones, suggests at most three changes and writes notes next to the numbers. Reviews stay out of the repository because they hold personal data.
@@ -150,6 +152,8 @@ Every notification, every scroll pause and what you did after it, and screen tim
 | `ui/` | grod UI: calm tokens and components |
 | `research/` | Evidence behind the design |
 | `docs/` | Architecture and rule behavior |
+
+The Android app's icons are from [Lucide](https://lucide.dev) (ISC); see [android/THIRD_PARTY_NOTICES.md](android/THIRD_PARTY_NOTICES.md).
 
 Checks:
 

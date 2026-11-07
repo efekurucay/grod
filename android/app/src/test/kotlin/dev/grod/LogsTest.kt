@@ -1,9 +1,11 @@
 package dev.grod
 
 import java.io.File
+import java.io.FileOutputStream
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -60,5 +62,36 @@ class LogsTest {
         assertEquals("{\"a\":3}\n", File(dir, "notifications-2026-11-06.jsonl").readText())
         writer.append("notifications", "{\"a\":4}", 0)
         assertTrue(dir.list()!!.isEmpty())
+    }
+
+    @Test
+    fun namesTellKindAndDate() {
+        assertEquals("notifications", LogFiles.kind("notifications-2026-11-06.jsonl.gz"))
+        assertEquals(LocalDate.parse("2026-11-06"), LogFiles.date("events-2026-11-06.jsonl"))
+        assertEquals(null, LogFiles.kind("notifications-2026-11-06.jsonl.tmp"))
+    }
+
+    @Test
+    fun folderReadsAndRewritesPlainAndGzippedFiles() {
+        val dir = tmp.newFolder("log")
+        val folder = LogFolder(dir)
+        // Two gzip members, as LogWriter.tidy leaves a day that was appended to after compression.
+        val gz = File(dir, "notifications-2026-11-05.jsonl.gz")
+        GZIPOutputStream(FileOutputStream(gz, true)).use { it.write("a\n".toByteArray()) }
+        GZIPOutputStream(FileOutputStream(gz, true)).use { it.write("b\n\n".toByteArray()) }
+        File(dir, "notifications-2026-11-06.jsonl").writeText("c\n")
+        File(dir, "events-2026-11-06.jsonl").writeText("e\n")
+        assertEquals(listOf("notifications-2026-11-05.jsonl.gz", "notifications-2026-11-06.jsonl"), folder.names("notifications"))
+        assertEquals(listOf("a", "b"), folder.read(gz.name))
+        assertEquals(listOf("e"), folder.read("events", LocalDate.parse("2026-11-06")))
+        assertTrue(folder.read("missing.jsonl").isEmpty())
+
+        folder.write(gz.name, listOf("b"))
+        assertEquals(listOf("b"), folder.read(gz.name))
+        folder.write("notifications-2026-11-06.jsonl", listOf("c", "d"))
+        assertEquals("c\nd\n", File(dir, "notifications-2026-11-06.jsonl").readText())
+        folder.write(gz.name, emptyList())
+        assertFalse(gz.exists())
+        assertEquals(setOf("notifications-2026-11-06.jsonl", "events-2026-11-06.jsonl"), dir.list()!!.toSet())
     }
 }
