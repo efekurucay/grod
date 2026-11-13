@@ -77,6 +77,17 @@ function phones(): string[] {
   });
 }
 
+/** The connected device that has grod installed; adb without -s refuses to pick when a tablet is connected too. */
+export function grodPhone(): string | undefined {
+  return phones().find((serial) => {
+    try {
+      return execFileSync('adb', ['-s', serial, 'shell', 'pm', 'path', ANDROID_PACKAGE], { encoding: 'utf8' }).includes('package:');
+    } catch {
+      return false;
+    }
+  });
+}
+
 function pushToPhone(compiled: string, devices: string[]): string {
   if (devices.length === 0) return execFileSyncOk() ? 'no phone connected' : 'adb not found';
   const tmp = join(repoRoot, 'android/.rules-push.json');

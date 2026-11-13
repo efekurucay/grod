@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { gunzipSync } from 'node:zlib';
-import { ANDROID_PACKAGE, reconnectWifi } from './sync.ts';
+import { ANDROID_PACKAGE, grodPhone } from './sync.ts';
 
 export type NotificationEvent = {
   t: number;
@@ -48,10 +48,9 @@ function lines<T>(raw: Buffer, name: string): T[] {
  * docs/data.md "Export": release builds are not debuggable, so the app copies its private logs to its
  * external dir on request; they are read and the copy is deleted at once so it does not linger in shared storage.
  */
-export function readPhone(days: number, serial?: string) {
+export function readPhone(days: number, serial = grodPhone()) {
   const since = Date.now() - days * 86_400_000;
   const cutoff = new Date(since).toISOString().slice(0, 10);
-  if (!serial) reconnectWifi();
   try {
     broadcast(serial, 'dev.grod.EXPORT');
   } catch {
