@@ -24,17 +24,17 @@ export type Notifications = { enabled: boolean; deliverEvery: number; deliverAt?
 
 export type Review = { weekday: number; time: string };
 
-export type Launcher = { distracting?: string[]; hidden?: string[]; weather?: boolean };
+export type Launcher = { distracting?: string[]; hidden?: string[]; weather?: boolean; dock?: string[] };
 
 export type Scroll = { freeSeconds?: number; firstPauseSeconds?: number; growth?: number; maxPauseSeconds?: number; resetMinutes?: number };
 
 /** docs/rules.md "Scroll pause": the values a missing field takes. */
 export const scrollDefaults: Required<Scroll> = { freeSeconds: 60, firstPauseSeconds: 10, growth: 2, maxPauseSeconds: 300, resetMinutes: 15 };
 
-export type Opening = { awayMinutes?: number; quickMinutes?: number };
+export type Opening = { awayMinutes?: number; quickMinutes?: number; nightFrom?: string; nightTo?: string };
 
 /** docs/rules.md "Opening check": the values a missing field takes. */
-export const openingDefaults: Required<Opening> = { awayMinutes: 5, quickMinutes: 2 };
+export const openingDefaults: Required<Opening> = { awayMinutes: 5, quickMinutes: 2, nightFrom: '00:00', nightTo: '06:00' };
 
 export type RulesFile = {
   $schema?: string;

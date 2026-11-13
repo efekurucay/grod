@@ -47,6 +47,13 @@ test('schema rejects unknown fields and bad ids', () => {
   assert.ok(rules.validate(bad).length >= 2);
 });
 
+test('night hours are local HH:MM times', () => {
+  const file = rules.load();
+  assert.deepEqual(rules.validate({ ...file, opening: { nightFrom: '23:30', nightTo: '06:00' } }), []);
+  assert.ok(rules.validate({ ...file, opening: { nightFrom: '24:00' } }).length > 0);
+  assert.ok(rules.validate({ ...file, opening: { nightTo: '6:00' } }).length > 0);
+});
+
 test('upsert, save and revision round-trip', () => {
   const before = rules.revision();
   const file = rules.load();

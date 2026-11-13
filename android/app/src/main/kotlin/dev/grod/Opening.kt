@@ -1,6 +1,7 @@
 package dev.grod
 
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.pow
@@ -9,9 +10,24 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-/** The top-level `opening` settings (docs/rules.md, "Opening check (Android)"). */
-data class OpeningSettings(val awayMinutes: Int = 5, val quickMinutes: Int = 2) {
+/** The top-level `opening` settings (docs/rules.md, "Opening check (Android)"); night times are minutes of the day. */
+data class OpeningSettings(val awayMinutes: Int = 5, val quickMinutes: Int = 2, val nightFrom: Int = 0, val nightTo: Int = 6 * 60) {
     val awayMs: Long get() = awayMinutes * 60_000L
+
+    /** Night runs from nightFrom up to nightTo, across midnight when nightFrom is later; equal times turn it off. */
+    fun night(at: LocalTime): Boolean {
+        val m = at.hour * 60 + at.minute
+        return when {
+            nightFrom == nightTo -> false
+            nightFrom < nightTo -> m in nightFrom until nightTo
+            else -> m >= nightFrom || m < nightTo
+        }
+    }
+
+    /** "00:00–06:00" */
+    val nightLabel: String get() = "${clock(nightFrom)}–${clock(nightTo)}"
+
+    private fun clock(m: Int) = "%02d:%02d".format(m / 60, m % 60)
 }
 
 /** An answer to the opening question; [id] is what the events log carries. */
@@ -152,16 +168,25 @@ object Opening {
     fun overrun(sessions: List<PastSession>, now: Long): Overrun =
         recent(sessions, now).let { r -> Overrun(r.count { it.overran }, r.size) }
 
-    /** scroll.firstPauseSeconds × growth ^ n, capped at maxPauseSeconds; n = Browse answers today before this one. */
+    /** scroll.firstPauseSeconds × growth ^ n, capped at maxPauseSeconds; n = Browse and night answers today before this one. */
     fun waitSeconds(n: Int, scroll: ScrollSettings): Int =
         min(scroll.firstPauseSeconds * scroll.growth.pow(n), scroll.maxPauseSeconds.toDouble()).roundToInt()
 
     /** What an answer does: open now ([waitSeconds] null) or after a wait; quick purposes get a window. */
     data class Answer(val purpose: Purpose, val waitSeconds: Int?, val windowMs: Long?)
 
-    fun answer(purpose: Purpose, past: List<PastSession>, browsesToday: Int, now: Long, settings: OpeningSettings, scroll: ScrollSettings): Answer {
+    /** At [night] a quick purpose waits like Browse too: late openings are where "just a message" turns into browsing. */
+    fun answer(
+        purpose: Purpose,
+        past: List<PastSession>,
+        browsesToday: Int,
+        now: Long,
+        settings: OpeningSettings,
+        scroll: ScrollSettings,
+        night: Boolean = false,
+    ): Answer {
         if (!purpose.quick) return Answer(purpose, waitSeconds(browsesToday, scroll), null)
-        val wait = if (overrun(past, now).lost) waitSeconds(browsesToday, scroll) else null
+        val wait = if (night || overrun(past, now).lost) waitSeconds(browsesToday, scroll) else null
         return Answer(purpose, wait, windowMs(past, now, settings))
     }
 }

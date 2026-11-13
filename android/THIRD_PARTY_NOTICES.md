@@ -4,7 +4,7 @@ The grod Android app ships no third-party code. Its icons are drawn from Lucide.
 
 ## Lucide
 
-The vector drawables `app/src/main/res/drawable/lucide_*.xml` are converted from [lucide-static](https://lucide.dev) 0.468.0 icons (bell, layout-grid, list-filter, search, settings, sun, trash-2, x), with the paths unchanged.
+The vector drawables `app/src/main/res/drawable/lucide_*.xml` are converted from [lucide-static](https://lucide.dev) 0.468.0 icons (bell, layout-grid, list-filter, mic, search, settings, sun, trash-2, x), with the paths unchanged; circle, rect, line and polygon elements are written as equivalent paths.
 
 ```
 ISC License
@@ -23,3 +23,7 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
+
+## App logos in the dock
+
+`app/src/main/res/drawable/brand_*.xml` are the logos of WhatsApp, Microsoft Teams, Google Messages, YouTube Music and Garanti BBVA, taken from each app's own launcher icon (its monochrome layer, or Garanti BBVA's foreground) and only re-framed. `brand_camera.xml` redraws Huawei Camera's lens icon in one color. The logos are trademarks of their owners; grod draws them only to open those apps.

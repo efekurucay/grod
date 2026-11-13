@@ -215,10 +215,12 @@ server.registerTool(
   'set_opening_check',
   {
     description:
-      'Android opening check: when a distracting app comes to the front after awayMinutes away, grod asks Message / Look something up / Browse. Quick purposes open at once with a window (quickMinutes until learned from past sessions); Browse waits. Give only what changes; returns the full settings.',
+      'Android opening check: when a distracting app comes to the front after awayMinutes away, grod asks Message / Look something up / Browse. Quick purposes open at once with a window (quickMinutes until learned from past sessions); Browse waits. From nightFrom to nightTo (local, across midnight when nightFrom is later) every answer waits; equal times turn night off. Give only what changes; returns the full settings.',
     inputSchema: z.object({
       awayMinutes: z.number().int().min(1).max(240).optional(),
       quickMinutes: z.number().int().min(1).max(10).optional(),
+      nightFrom: z.string().optional().describe('Local HH:MM, e.g. "00:00"'),
+      nightTo: z.string().optional().describe('Local HH:MM, e.g. "06:00"'),
     }),
   },
   (changes) =>
@@ -234,21 +236,23 @@ server.registerTool(
   'set_launcher',
   {
     description:
-      'grod launcher on Android (text-only home screen). Distracting apps are listed small and go through the opening check; hidden apps are only found by search. Apps named in android rules are distracting already. Give only what changes.',
+      'grod launcher on Android (text-only home screen). Distracting apps are listed small and go through the opening check; hidden apps are only found by search. Apps named in android rules are distracting already. dock pins up to 7 apps as icons in a fixed bottom row. Give only what changes.',
     inputSchema: z.object({
       addDistracting: z.array(z.string()).optional().describe('Package names, e.g. com.twitter.android'),
       removeDistracting: z.array(z.string()).optional(),
       hide: z.array(z.string()).optional(),
       show: z.array(z.string()).optional(),
+      dock: z.array(z.string()).max(7).optional().describe('Replaces the whole dock, in order; [] empties it'),
     }),
   },
-  ({ addDistracting = [], removeDistracting = [], hide = [], show = [] }) =>
+  ({ addDistracting = [], removeDistracting = [], hide = [], show = [], dock }) =>
     tool(() => {
       const file = load();
       const l = (file.launcher ??= { distracting: [], hidden: [] });
       const set = (list: string[] = [], add: string[], remove: string[]) => [...new Set([...list.filter((p) => !remove.includes(p)), ...add])];
       l.distracting = set(l.distracting, addDistracting, removeDistracting);
       l.hidden = set(l.hidden, hide, show);
+      if (dock) l.dock = dock;
       save(file);
       return `${JSON.stringify(l)}. ${deliver()}`;
     }),

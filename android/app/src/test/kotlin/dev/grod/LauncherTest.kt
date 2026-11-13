@@ -133,25 +133,83 @@ class LauncherTest {
     }
 
     @Test
-    fun cloudKeepsAppsUsedAMinuteOrLaunchedTwice() {
-        val now = 100 * Launcher.RECENT_MS
+    fun cloudKeepsAppsOpenedInTheLastWeek() {
+        val now = 100 * Launcher.UNUSED_MS
+        val day = 24 * 60 * 60 * 1000L
         val recent = Launcher.recent(
-            mapOf(maps.pkg to 60_000L, ig.pkg to 3_600_000L, tiktok.pkg to 59_000L),
+            mapOf(maps.pkg to now - 6 * day, ig.pkg to now - day, tiktok.pkg to now - 8 * day),
             mapOf(
-                isbank.pkg to listOf(now - 1_000L, now - 2_000L),
-                ogrenci.pkg to listOf(now - 1_000L),
-                stk.pkg to listOf(now - 1_000L, now - Launcher.RECENT_MS - 1),
+                // Found by search and opened from grod a minute ago: in at once.
+                ogrenci.pkg to listOf(now - 60_000L),
+                stk.pkg to listOf(now - 8 * day),
             ),
             now,
         )
-        assertEquals(setOf(maps.pkg, ig.pkg, isbank.pkg), recent)
+        assertEquals(setOf(maps.pkg, ig.pkg, ogrenci.pkg), recent)
         val listing = Launcher.list(all, Launcher.distracting(rules, LocalMarks()), emptySet(), recent)
-        assertEquals(listOf("İşCep", "Maps"), listing.useful.map { it.label })
-        // Distracting apps follow the same rule: Instagram was used, TikTok (59 s) was not.
+        assertEquals(listOf("Maps", "Öğrenci Belgesi"), listing.useful.map { it.label })
+        // Distracting apps follow the same rule: Instagram was opened, TikTok (8 days ago) was not.
         assertEquals(listOf("Instagram"), listing.distracting.map { it.label })
         // Unknown use (no usage access): everything shows.
         assertEquals(5, Launcher.list(all, emptySet(), setOf(stk.pkg, x.pkg)).useful.size)
         // Search still finds the rest.
-        assertEquals(listOf(ogrenci), Launcher.search(all, "ogrenci", emptySet()))
+        assertEquals(listOf(isbank), Launcher.search(all, "iscep", emptySet()))
+    }
+
+    @Test
+    fun mostUsedComeFirst() {
+        val steps = mapOf(maps.pkg to 2, isbank.pkg to 4, ogrenci.pkg to 2)
+        val ordered = Launcher.byUse(listOf(ogrenci, maps, tiktok, isbank)) { steps[it] ?: 0 }
+        assertEquals(listOf("İşCep", "Maps", "Öğrenci Belgesi", "TikTok"), ordered.map { it.label })
+    }
+
+    @Test
+    fun suggestsUninstallingUserAppsUnopenedForThirtyDays() {
+        val now = 100 * Launcher.UNUSED_MS
+        val day = 24 * 60 * 60 * 1000L
+        val unused = Launcher.unused(
+            installedAt = mapOf(
+                maps.pkg to now - 90 * day,
+                isbank.pkg to now - 90 * day,
+                ogrenci.pkg to now - 90 * day,
+                // Installed last week: too new to judge.
+                tiktok.pkg to now - 7 * day,
+            ),
+            lastOpened = mapOf(maps.pkg to now - 31 * day, isbank.pkg to now - 29 * day),
+            launchTimes = mapOf(ogrenci.pkg to listOf(now - day)),
+            now = now,
+        )
+        assertEquals(setOf(maps.pkg), unused)
+    }
+
+    @Test
+    fun voiceSearchFindsWhatWasMeantAsSaid() {
+        val whatsapp = app("com.whatsapp", "WhatsApp")
+        val chrome = app("com.android.chrome", "Chrome")
+        val apps = all + whatsapp + chrome
+        // Found as heard, before the Turkish suffix, or without spaces.
+        assertEquals("instagram", Launcher.voiceQuery(apps, listOf("instagram")))
+        assertEquals("WhatsApp", Launcher.voiceQuery(apps, listOf("WhatsApp'ı aç")))
+        assertEquals("whatsapp", Launcher.voiceQuery(apps, listOf("whats app")))
+        // Not found by search: the closest sounding name.
+        assertEquals("WhatsApp", Launcher.voiceQuery(apps, listOf("vatsap")))
+        assertEquals("WhatsApp", Launcher.voiceQuery(apps, listOf("vatsap aç")))
+        assertEquals("Chrome", Launcher.voiceQuery(apps, listOf("krome")))
+        // Nothing close enough.
+        assertEquals(null, Launcher.voiceQuery(apps, listOf("hava durumu")))
+    }
+
+    @Test
+    fun dockKeepsItsOrderTakesPhoneChangesAndLeavesTheCloud() {
+        val docked = Rules.parse("""{"schemaVersion":1,"rules":[],"launcher":{"dock":["com.whatsapp","com.google.android.apps.maps"]}}""")
+        assertEquals(listOf("com.whatsapp", "com.google.android.apps.maps"), Launcher.dock(docked, LocalMarks()))
+        // Removed on the phone, another added there: rules order first, phone additions after.
+        var local = Launcher.toggleDocked(LocalMarks(), "com.whatsapp", byRules = true, now = true)
+        local = Launcher.toggleDocked(local, isbank.pkg, byRules = false, now = false)
+        assertEquals(listOf(maps.pkg, isbank.pkg), Launcher.dock(docked, local))
+        // Docked apps are not words in the cloud too.
+        val listing = Launcher.list(all, emptySet(), emptySet(), docked = setOf(maps.pkg, isbank.pkg))
+        assertFalse(listing.useful.any { it.pkg == maps.pkg || it.pkg == isbank.pkg })
+        assertEquals(listOf(maps), Launcher.search(all, "maps", emptySet()))
     }
 }

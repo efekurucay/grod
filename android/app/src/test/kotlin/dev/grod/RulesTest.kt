@@ -85,11 +85,15 @@ class RulesTest {
             "review time" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"8pm"}}""",
             "review field" to """{"schemaVersion":1,"rules":[],"review":{"weekday":7,"time":"20:00","day":"sun"}}""",
             "launcher pauseSeconds" to """{"schemaVersion":1,"rules":[],"launcher":{"pauseSeconds":10}}""",
+            "launcher dock too long" to """{"schemaVersion":1,"rules":[],"launcher":{"dock":["a","b","c","d","e","f","g","h"]}}""",
+            "launcher dock not strings" to """{"schemaVersion":1,"rules":[],"launcher":{"dock":[1]}}""",
             "opening not object" to """{"schemaVersion":1,"rules":[],"opening":5}""",
             "opening field" to """{"schemaVersion":1,"rules":[],"opening":{"awaySeconds":300}}""",
             "opening away zero" to """{"schemaVersion":1,"rules":[],"opening":{"awayMinutes":0}}""",
             "opening quick too long" to """{"schemaVersion":1,"rules":[],"opening":{"quickMinutes":11}}""",
             "opening quick fraction" to """{"schemaVersion":1,"rules":[],"opening":{"quickMinutes":1.5}}""",
+            "opening night hour" to """{"schemaVersion":1,"rules":[],"opening":{"nightFrom":"24:00"}}""",
+            "opening night type" to """{"schemaVersion":1,"rules":[],"opening":{"nightTo":6}}""",
         )
         for ((name, json) in bad) {
             try {
@@ -116,6 +120,10 @@ class RulesTest {
         assertEquals(OpeningSettings(), Rules.parse("""{"schemaVersion":1,"rules":[]}""").opening)
         assertEquals(OpeningSettings(10, 2), Rules.parse("""{"schemaVersion":1,"rules":[],"opening":{"awayMinutes":10}}""").opening)
         assertEquals(10 * 60_000L, OpeningSettings(10, 2).awayMs)
+        assertEquals(
+            OpeningSettings(5, 2, 23 * 60 + 30, 7 * 60),
+            Rules.parse("""{"schemaVersion":1,"rules":[],"opening":{"nightFrom":"23:30","nightTo":"07:00"}}""").opening,
+        )
     }
 
     @Test

@@ -255,6 +255,15 @@
           },
           "description": "Packages left out of the list; still reachable by search."
         },
+        "dock": {
+          "type": "array",
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "Packages pinned as icons in a fixed row at the bottom of the home screen, in this order. They leave the word cloud."
+        },
         "weather": {
           "type": "boolean",
           "default": false,
@@ -317,6 +326,18 @@
           "maximum": 10,
           "default": 2,
           "description": "Time window for Message and Look something up until grod has learned one from past sessions."
+        },
+        "nightFrom": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "default": "00:00",
+          "description": "Start of night hours (local HH:MM), when every answer waits like Browse. Equal to nightTo turns night off."
+        },
+        "nightTo": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "default": "06:00",
+          "description": "End of night hours (local HH:MM); earlier than nightFrom means night runs across midnight."
         }
       }
     }

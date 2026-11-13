@@ -131,22 +131,32 @@ object Rules {
 
     private fun parseLauncher(raw: Any, path: String): LauncherSettings {
         val o = raw as? JSONObject ?: fail(path, "must be an object")
-        unknownKey(o, setOf("distracting", "hidden", "weather"))?.let { fail("$path.$it", "unknown field") }
+        unknownKey(o, setOf("distracting", "hidden", "weather", "dock"))?.let { fail("$path.$it", "unknown field") }
         fun packages(key: String): List<String> {
             val arr = (o.opt(key) ?: return emptyList()) as? JSONArray ?: fail("$path.$key", "must be an array")
             return (0 until arr.length()).map { i -> arr.opt(i) as? String ?: fail("$path.$key[$i]", "must be a string") }
         }
         val weather = o.opt("weather")?.let { it as? Boolean ?: fail("$path.weather", "must be a boolean") } ?: false
-        return LauncherSettings(packages("distracting"), packages("hidden"), weather)
+        val dock = packages("dock")
+        if (dock.size > 7) fail("$path.dock", "at most 7 apps")
+        return LauncherSettings(packages("distracting"), packages("hidden"), weather, dock.distinct())
     }
 
     private fun parseOpening(raw: Any, path: String): OpeningSettings {
         val o = raw as? JSONObject ?: fail(path, "must be an object")
-        unknownKey(o, setOf("awayMinutes", "quickMinutes"))?.let { fail("$path.$it", "unknown field") }
+        unknownKey(o, setOf("awayMinutes", "quickMinutes", "nightFrom", "nightTo"))?.let { fail("$path.$it", "unknown field") }
         val d = OpeningSettings()
+        fun clock(key: String, default: Int): Int {
+            val raw = o.opt(key) ?: return default
+            val t = raw as? String
+            if (t == null || !CLOCK.matches(t)) fail("$path.$key", "must look like HH:MM")
+            return clockMinutes(t)
+        }
         return OpeningSettings(
             awayMinutes = o.opt("awayMinutes")?.let { int(it, "$path.awayMinutes", 1..240) } ?: d.awayMinutes,
             quickMinutes = o.opt("quickMinutes")?.let { int(it, "$path.quickMinutes", 1..10) } ?: d.quickMinutes,
+            nightFrom = clock("nightFrom", d.nightFrom),
+            nightTo = clock("nightTo", d.nightTo),
         )
     }
 

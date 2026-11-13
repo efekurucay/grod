@@ -35,6 +35,7 @@ Usage:
   grod opening                  opening check settings (Android)
   grod opening away <minutes>   minutes out of an app before it asks again
   grod opening quick <minutes>  first window for Message and Look something up
+  grod opening night <HH:MM-HH:MM|off>   night hours, when every answer waits
   grod notifications            batching settings (Android)
   grod notifications on|off
   grod notifications every <minutes>
@@ -46,6 +47,7 @@ Usage:
   grod launcher                 home screen settings (Android)
   grod launcher distracting|calm <package>   mark or unmark a distracting app
   grod launcher hide|show <package>
+  grod launcher dock <pkg,pkg,...|none>      icons in the bottom row, in order
   grod review                   past weekly reviews
   grod review snapshot          save this week's numbers from the phone
   grod review set <1-7> <HH:MM> weekly reminder on the phone (1 = Monday)
@@ -158,8 +160,16 @@ function opening([sub, value]: string[]): void {
     console.log(JSON.stringify({ ...openingDefaults, ...file.opening }, null, 2));
     return;
   }
-  if (!(sub in keys)) throw new Error('usage: grod opening [away|quick <minutes>]');
-  file.opening = { ...file.opening, [keys[sub as keyof typeof keys]]: Number(need(value, 'minutes')) };
+  if (sub === 'night') {
+    const range = need(value, 'HH:MM-HH:MM or off');
+    // Equal times turn night off (docs/rules.md "Opening check").
+    const [nightFrom, nightTo] = range === 'off' ? ['00:00', '00:00'] : range.split('-');
+    file.opening = { ...file.opening, nightFrom, nightTo };
+  } else if (sub in keys) {
+    file.opening = { ...file.opening, [keys[sub as keyof typeof keys]]: Number(need(value, 'minutes')) };
+  } else {
+    throw new Error('usage: grod opening [away|quick <minutes> | night <HH:MM-HH:MM|off>]');
+  }
   save(file);
   console.log(JSON.stringify({ ...openingDefaults, ...file.opening }));
   console.log(deliver());
@@ -232,7 +242,10 @@ function launcher([sub, value]: string[]): void {
   }
   if (sub === 'distracting' || sub === 'calm') l.distracting = toggle(l.distracting, need(value, 'package'), sub === 'distracting');
   else if (sub === 'hide' || sub === 'show') l.hidden = toggle(l.hidden, need(value, 'package'), sub === 'hide');
-  else throw new Error('usage: grod launcher [distracting|calm|hide|show <package>]');
+  else if (sub === 'dock') {
+    const list = need(value, 'packages, comma-separated, or none');
+    l.dock = list === 'none' ? [] : list.split(',').map((p) => p.trim());
+  } else throw new Error('usage: grod launcher [distracting|calm|hide|show <package> | dock <pkg,pkg,...|none>]');
   save(file);
   console.log(JSON.stringify(l, null, 2));
   console.log(deliver());

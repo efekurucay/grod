@@ -2,16 +2,21 @@ package dev.grod
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -31,8 +36,8 @@ import android.widget.TextView
 import kotlin.concurrent.thread
 
 /**
- * grod's optional home screen (docs/rules.md, "Launcher (Android)"): app names as a centered word
- * cloud, sized by use, in grod colors. Distracting apps are always the smallest, muted word; the
+ * grod's optional home screen (docs/rules.md, "Launcher (Android)"): the apps opened in the last
+ * week as a centered word cloud, sized and ordered by use, in grod colors. Distracting apps are always the smallest, muted word; the
  * opening check catches them once they are in front, whatever route opened them.
  */
 class LauncherActivity : Activity() {
@@ -42,6 +47,7 @@ class LauncherActivity : Activity() {
     private lateinit var sizes: CloudSizes
     private lateinit var cloud: FlowLayout
     private lateinit var scroll: ScrollView
+    private lateinit var dockRow: LinearLayout
     private lateinit var search: EditText
     private lateinit var weatherText: TextView
     private lateinit var weather: WeatherSource
@@ -74,13 +80,18 @@ class LauncherActivity : Activity() {
             isFocusableInTouchMode = true
         }
         page.addView(header())
-        page.addView(searchField(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = ui.dp(20) })
+        page.addView(searchRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = ui.dp(20) })
         cloud = FlowLayout(this, hGap = ui.dp(14), vGap = 0).apply { setPadding(0, ui.dp(8), 0, ui.dp(8)) }
         scroll = ScrollView(this).apply {
             isFillViewport = true
             addView(cloud)
         }
         page.addView(scroll, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+        dockRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        page.addView(dockRow, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = ui.dp(8) })
         // The cloud is fitted to the space it has; refit when that space changes (keyboard, rotation).
         scroll.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
             if (bottom - top != oldBottom - oldTop) scroll.post(::fit)
@@ -158,6 +169,38 @@ class LauncherActivity : Activity() {
         weatherText.visibility = if (text == null) View.GONE else View.VISIBLE
     }
 
+    /** The search field, with a microphone when the phone has a speech recognizer. */
+    private fun searchRow() = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(searchField(), LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+        if (voiceIntent().resolveActivity(packageManager) != null) {
+            addView(ui.iconButton(R.drawable.lucide_mic, "Search by voice") {
+                try {
+                    startActivityForResult(voiceIntent(), REQUEST_VOICE)
+                } catch (e: ActivityNotFoundException) {
+                    // The recognizer went away since the check; the field still works.
+                }
+            })
+        }
+    }
+
+    private fun voiceIntent() = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        .putExtra(RecognizerIntent.EXTRA_PROMPT, "Say an app")
+
+    /** Voice search: what [Launcher.voiceQuery] finds fills the search; a single match opens at once. */
+    @Deprecated("startActivityForResult is used for every API level the app supports.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQUEST_VOICE || resultCode != RESULT_OK) return
+        val heard = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS).orEmpty()
+        val phrase = Launcher.voiceQuery(apps, heard) ?: heard.firstOrNull() ?: return
+        search.setText(phrase)
+        search.setSelection(phrase.length)
+        results.singleOrNull()?.let(::open)
+    }
+
     /** Always visible; the keyboard opens only when it is tapped. Enter opens the first match. */
     private fun searchField() = ui.input("Search apps").apply {
         search = this
@@ -188,11 +231,22 @@ class LauncherActivity : Activity() {
             val launchable = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
                 .map { AppEntry(it.activityInfo.packageName, it.activityInfo.name, it.loadLabel(pm).toString()) }
             val found = Launcher.withoutHomes(launchable, homes, packageName)
-            sizes.refreshIfStale(found.map { it.pkg }.toSet(), distracting)
+            // The cloud shows at once from the last pass; the day's first pass reads usage stats, which takes a moment.
             main.post {
                 apps = found
                 render()
             }
+            // Only apps the user installed can be uninstalled, so only those are suggested.
+            val installedAt = found.map { it.pkg }.toSet().minus(packageName).mapNotNull { pkg ->
+                try {
+                    pm.getPackageInfo(pkg, 0).takeIf { (it.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM == 0 }
+                        ?.let { pkg to it.firstInstallTime }
+                } catch (e: PackageManager.NameNotFoundException) {
+                    null
+                }
+            }.toMap()
+            sizes.refreshIfStale(found.map { it.pkg }.toSet(), distracting, installedAt)
+            main.post(::render)
         }
     }
 
@@ -201,10 +255,12 @@ class LauncherActivity : Activity() {
         val distracting = Launcher.distracting(store.rules, marks)
         val query = search.text.toString()
         results = if (query.isBlank()) emptyList() else Launcher.search(apps, query, distracting)
-        // One stable alphabetical cloud; distracting words sit among the rest, just small and muted.
+        val dock = Launcher.dock(store.rules, marks).mapNotNull { pkg -> apps.firstOrNull { it.pkg == pkg } }
+        showDock(dock)
+        // Most used first; distracting words sit among the least used, small and muted.
         val shown = if (query.isBlank()) {
-            Launcher.list(apps, distracting, Launcher.hidden(store.rules, marks), sizes.recent()).let { it.useful + it.distracting }
-                .sortedWith(compareBy({ Launcher.fold(it.label) }, { it.label }))
+            Launcher.list(apps, distracting, Launcher.hidden(store.rules, marks), sizes.recent(), docked = dock.map { it.pkg }.toSet())
+                .let { Launcher.byUse(it.useful + it.distracting) { pkg -> if (pkg in distracting) 0 else sizes.step(pkg) } }
         } else {
             results
         }
@@ -258,11 +314,40 @@ class LauncherActivity : Activity() {
 
     private fun open(app: AppEntry) = launch(app)
 
+    /** The fixed bottom row: one logo per docked app, in one color, spread evenly; long-press works as on a word. */
+    private fun showDock(dock: List<AppEntry>) {
+        dockRow.removeAllViews()
+        dockRow.visibility = if (dock.isEmpty()) View.GONE else View.VISIBLE
+        for (app in dock) {
+            val res = DOCK_ICONS[app.pkg]
+            val view = if (res != null) {
+                ui.iconButton(res, app.label) { open(app) }.apply { imageTintList = ColorStateList.valueOf(ui.color(R.color.grod_foreground)) }
+            } else {
+                // No icon for this app: its first letter, in the same quiet weight.
+                ui.text(app.label.take(1).uppercase(), 22f).apply {
+                    contentDescription = app.label
+                    gravity = Gravity.CENTER
+                    minHeight = ui.dp(TOUCH_DP)
+                    isClickable = true
+                    setOnClickListener { open(app) }
+                }
+            }
+            view.setOnLongClickListener { menu(app); true }
+            dockRow.addView(view, LinearLayout.LayoutParams(0, ui.dp(TOUCH_DP + 8), 1f))
+        }
+    }
+
     private fun menu(app: AppEntry) {
         val marks = prefs.marks
         val distracting = app.pkg in Launcher.distracting(store.rules, marks)
         val hidden = app.pkg in Launcher.hidden(store.rules, marks)
-        val choices = arrayOf("App info", if (hidden) "Unhide" else "Hide", if (distracting) "Not distracting" else "Mark as distracting")
+        val docked = app.pkg in Launcher.dock(store.rules, marks)
+        val choices = arrayOf(
+            "App info",
+            if (hidden) "Unhide" else "Hide",
+            if (distracting) "Not distracting" else "Mark as distracting",
+            if (docked) "Remove from dock" else "Add to dock",
+        )
         AlertDialog.Builder(this)
             .setTitle(app.label)
             .setItems(choices) { _, which ->
@@ -270,6 +355,7 @@ class LauncherActivity : Activity() {
                     0 -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", app.pkg, null)))
                     1 -> prefs.marks = Launcher.toggleHidden(marks, app.pkg, app.pkg in store.rules.launcher.hidden, hidden)
                     2 -> prefs.marks = Launcher.toggleDistracting(marks, app.pkg, app.pkg in Launcher.distractingBy(store.rules), distracting)
+                    3 -> prefs.marks = Launcher.toggleDocked(marks, app.pkg, app.pkg in store.rules.launcher.dock, docked)
                 }
                 render()
             }
@@ -281,6 +367,17 @@ class LauncherActivity : Activity() {
         const val TOUCH_DP = 48
         const val MIN_TOUCH_DP = 36
         const val MIN_SCALE = 0.55
+        const val REQUEST_VOICE = 1
+
+        /** Docked apps drawn with their own logo in one color (the app's monochrome icon); any other app shows its first letter. */
+        val DOCK_ICONS = mapOf(
+            "com.whatsapp" to R.drawable.brand_whatsapp,
+            "com.huawei.camera" to R.drawable.brand_camera,
+            "com.google.android.apps.youtube.music" to R.drawable.brand_youtube_music,
+            "com.microsoft.teams" to R.drawable.brand_teams,
+            "com.google.android.apps.messaging" to R.drawable.brand_messages,
+            "com.garanti.cepsubesi" to R.drawable.brand_garanti,
+        )
     }
 
     /** Base padding now; bar insets are added when the window reports them (edge to edge on Android 15). */

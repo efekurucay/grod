@@ -178,6 +178,25 @@ class OpeningTest {
     }
 
     @Test
+    fun nightHoursRunAcrossMidnightAndEqualTimesTurnThemOff() {
+        val t = { s: String -> java.time.LocalTime.parse(s) }
+        val d = OpeningSettings()
+        assertTrue(d.night(t("00:00")) && d.night(t("05:59")))
+        assertFalse(d.night(t("06:00")) || d.night(t("23:59")))
+        val late = OpeningSettings(nightFrom = 23 * 60, nightTo = 7 * 60)
+        assertTrue(late.night(t("23:00")) && late.night(t("03:00")))
+        assertFalse(late.night(t("07:00")) || late.night(t("22:59")))
+        assertFalse(OpeningSettings(nightFrom = 0, nightTo = 0).night(t("03:00")))
+        assertEquals("23:00–07:00", late.nightLabel)
+    }
+
+    @Test
+    fun atNightAQuickPurposeWaitsLikeBrowseAndKeepsItsWindow() {
+        val night = Opening.answer(Purpose.MESSAGE, emptyList(), 2, 30 * day, settings, scroll, night = true)
+        assertEquals(Opening.Answer(Purpose.MESSAGE, 40, 2 * min), night)
+    }
+
+    @Test
     fun browseCountResetsAtLocalMidnight() {
         val today = LocalDate.parse("2026-11-07")
         val m = OpeningMemory().withBrowse(today).withBrowse(today)

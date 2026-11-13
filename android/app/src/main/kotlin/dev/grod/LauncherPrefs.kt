@@ -3,19 +3,27 @@ package dev.grod
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 
 /** Long-press choices; they stay on this phone (docs/rules.md, "Launcher (Android)"). */
 class LauncherPrefs(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("grod.launcher", Context.MODE_PRIVATE)
 
     var marks: LocalMarks
-        get() = LocalMarks(set(K_DISTRACTING), set(K_NOT_DISTRACTING), set(K_HIDDEN), set(K_UNHIDDEN))
+        get() = LocalMarks(set(K_DISTRACTING), set(K_NOT_DISTRACTING), set(K_HIDDEN), set(K_UNHIDDEN), set(K_DOCKED), set(K_UNDOCKED))
         set(value) = prefs.edit()
             .putStringSet(K_DISTRACTING, value.distracting)
             .putStringSet(K_NOT_DISTRACTING, value.notDistracting)
             .putStringSet(K_HIDDEN, value.hidden)
             .putStringSet(K_UNHIDDEN, value.unhidden)
+            .putStringSet(K_DOCKED, value.docked)
+            .putStringSet(K_UNDOCKED, value.undocked)
             .apply()
+
+    /** Apps the user chose to keep from the uninstall suggestions. */
+    var kept: Set<String>
+        get() = set(K_KEPT)
+        set(value) = prefs.edit().putStringSet(K_KEPT, value).apply()
 
     private fun set(key: String): Set<String> = prefs.getStringSet(key, null).orEmpty().toSet()
 
@@ -29,6 +37,9 @@ class LauncherPrefs(context: Context) {
         const val K_NOT_DISTRACTING = "notDistracting"
         const val K_HIDDEN = "hidden"
         const val K_UNHIDDEN = "unhidden"
+        const val K_KEPT = "kept"
+        const val K_DOCKED = "docked"
+        const val K_UNDOCKED = "undocked"
     }
 }
 
@@ -63,30 +74,42 @@ class CloudSizes(context: Context) {
         (v as? String)?.let { k to it.split(',').mapNotNull(String::toLongOrNull) }
     }.toMap()
 
-    /** Blocking (reads usage stats); call off the main thread. */
-    fun refreshIfStale(pkgs: Collection<String>, distracting: Set<String>) {
+    /** Apps not opened in 30 days, from the daily pass; empty without usage access. */
+    fun unused(): Set<String> = steps.getStringSet(K_UNUSED, null).orEmpty()
+
+    /**
+     * Blocking (reads usage stats); call off the main thread. [installedAt]: first install time of
+     * each app the user installed, for the uninstall suggestions.
+     */
+    fun refreshIfStale(pkgs: Collection<String>, distracting: Set<String>, installedAt: Map<String, Long>) {
         val today = java.time.LocalDate.now().toString()
         // Also stale when usage access arrived after today's pass, which then had no use to go on.
-        if (steps.getString(K_DAY, null) == today && (steps.contains(K_RECENT) || !Permissions.usageAccess(app))) return
+        if (steps.getString(K_DAY, null) == today && (steps.contains(K_UNUSED) || !Permissions.usageAccess(app))) return
         val now = System.currentTimeMillis()
         val access = Permissions.usageAccess(app)
-        fun foreground(windowMs: Long): Map<String, Long> = if (!access) emptyMap() else
-            app.getSystemService(android.app.usage.UsageStatsManager::class.java)
-                .queryAndAggregateUsageStats(now - windowMs, now)
-                .mapValues { it.value.totalTimeInForeground }
+        val stats = if (!access) null else app.getSystemService(android.app.usage.UsageStatsManager::class.java)
+        val usage = stats?.queryAndAggregateUsageStats(now - Launcher.RECENT_MS, now)?.mapValues { it.value.totalTimeInForeground }.orEmpty()
+        // Last time each app was on screen. lastTimeUsed alone also moves for work in the background,
+        // so it only counts for apps that had foreground time in the window.
+        val lastOpened = stats?.queryAndAggregateUsageStats(now - Launcher.UNUSED_MS, now)?.mapValues { (_, s) ->
+            maxOf(if (Build.VERSION.SDK_INT >= 29) s.lastTimeVisible else 0L, if (s.totalTimeInForeground > 0) s.lastTimeUsed else 0L)
+        }.orEmpty()
         val times = launchTimes()
         val counts = times.mapValues { (_, t) -> t.count { it > now - Launcher.RECENT_MS } }
-        val usage = foreground(Launcher.RECENT_MS)
         val computed = Launcher.sizeSteps(pkgs, usage, counts, distracting)
         steps.edit().clear().putString(K_DAY, today).apply {
             computed.forEach { (k, v) -> putInt(k, v) }
-            if (access) putStringSet(K_RECENT, Launcher.recent(usage, times, now))
+            if (access) {
+                putStringSet(K_RECENT, Launcher.recent(lastOpened, times, now))
+                putStringSet(K_UNUSED, Launcher.unused(installedAt, lastOpened, times, now))
+            }
         }.apply()
     }
 
     private companion object {
         const val K_DAY = "_day"
         const val K_RECENT = "_inCloud"
+        const val K_UNUSED = "_unused"
     }
 }
 

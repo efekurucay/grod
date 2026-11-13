@@ -12,6 +12,7 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.time.LocalTime
 
 /**
  * The opening question (docs/rules.md, "Opening check (Android)"), started by [GrodService] in its
@@ -96,6 +97,10 @@ class OpeningCheckActivity : Activity() {
         }
     }
 
+    /** "Night 00:00–06:00: every answer waits", while night hours run. */
+    private fun nightLine(): String? =
+        rules().opening.takeIf { it.night(LocalTime.now()) }?.let { "Night ${it.nightLabel}: every answer waits" }
+
     private fun showQuestion() {
         header("What is it for?")
         // The answer last given for this app is the primary button; the others are equal and quiet.
@@ -107,7 +112,7 @@ class OpeningCheckActivity : Activity() {
                 LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = ui.dp(12) },
             )
         }
-        for (line in overrunLines()) {
+        for (line in overrunLines() + listOfNotNull(nightLine())) {
             page.addView(ui.muted(line, 14f).apply {
                 gravity = Gravity.CENTER
                 setPadding(0, ui.dp(16), 0, 0)
@@ -135,7 +140,7 @@ class OpeningCheckActivity : Activity() {
 
     private fun showWait() {
         val purpose = waiting!!.purpose
-        header(overrunLines(purpose).firstOrNull() ?: purpose.label)
+        header(overrunLines(purpose).firstOrNull() ?: nightLine()?.takeIf { purpose.quick } ?: purpose.label)
         page.addView(ui.text("What's next after this?", 20f).apply {
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, ui.dp(24))

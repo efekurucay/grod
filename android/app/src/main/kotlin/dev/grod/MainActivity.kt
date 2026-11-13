@@ -2,6 +2,7 @@ package dev.grod
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
@@ -284,6 +285,50 @@ class MainActivity : Activity() {
             ui.row(body, rule.title, meta, end, off = !rule.enabled)
         }
         if (store.rules.rules.isEmpty()) ui.row(body, "No rules yet", off = true)
+        unusedApps()
+    }
+
+    /**
+     * Apps the user installed and has not opened in 30 days (docs/rules.md, "Launcher (Android)"), from
+     * the launcher's daily pass. Each row offers Uninstall or Keep.
+     */
+    private fun unusedApps() {
+        val launcherPrefs = LauncherPrefs(this)
+        val unused = (CloudSizes(this).unused() - launcherPrefs.kept).mapNotNull { pkg ->
+            try {
+                pkg to packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString()
+            } catch (e: PackageManager.NameNotFoundException) {
+                null // Uninstalled since the daily pass.
+            }
+        }.sortedBy { Launcher.fold(it.second) }
+        if (unused.isEmpty()) return
+        val body = ui.section(appsBody, "Unused for 30 days")
+        body.addView(ui.muted("Installed by you, not opened in 30 days. Tap one to uninstall or keep it.", 15f)
+            .apply { setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(4)) })
+        for ((pkg, label) in unused) {
+            ui.row(body, label)
+            body.getChildAt(body.childCount - 1).apply {
+                isClickable = true
+                setOnClickListener { uninstallOrKeep(pkg, label, launcherPrefs) }
+            }
+        }
+    }
+
+    /** The system asks before uninstalling; Keep stops suggesting the app. */
+    private fun uninstallOrKeep(pkg: String, label: String, launcherPrefs: LauncherPrefs) {
+        AlertDialog.Builder(this)
+            .setTitle(label)
+            .setItems(arrayOf("Uninstall", "Keep, don't suggest again")) { _, which ->
+                when (which) {
+                    0 -> startActivity(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", pkg, null)))
+                    1 -> {
+                        launcherPrefs.kept = launcherPrefs.kept + pkg
+                        apps()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /** The opening check's settings and, per purpose, what it has learned in the last 14 days. */
@@ -293,7 +338,8 @@ class MainActivity : Activity() {
         val usage = Permissions.usageAccess(this)
         val about = if (usage) {
             "After ${o.awayMinutes} min away, a distracting app asks what it is for. Message and Look something up open at once " +
-                "for a window (${o.quickMinutes} min until learned); Browse waits like a scroll pause, longer with each Browse today."
+                "for a window (${o.quickMinutes} min until learned); Browse waits like a scroll pause, longer with each Browse today." +
+                (if (o.nightFrom != o.nightTo) " At night (${o.nightLabel}) every answer waits." else "")
         } else {
             "Needs usage access to tell when a distracting app opens."
         }

@@ -3,6 +3,7 @@ package dev.grod
 import android.content.Context
 import android.content.Intent
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * What the opening check has learned and which sessions are going ([OpeningMemory]), kept in app
@@ -21,12 +22,13 @@ class OpeningStore private constructor(private val app: Context) {
         if (memory.live[session.pkg] != session) save(memory.copy(live = memory.live + (session.pkg to session)))
     }
 
-    /** An answer was given: logged, remembered for this app, and counted toward today's Browse waits. */
+    /** An answer was given: logged, remembered for this app, and a Browse or night answer counts toward today's waits. */
     fun answer(pkg: String, purpose: Purpose, rules: RuleSet, now: Long): Opening.Answer {
         val today = LocalDate.now()
-        val answer = Opening.answer(purpose, memory.past(purpose), memory.browsesOn(today), now, rules.opening, rules.scroll)
+        val night = rules.opening.night(LocalTime.now())
+        val answer = Opening.answer(purpose, memory.past(purpose), memory.browsesOn(today), now, rules.opening, rules.scroll, night)
         val remembered = memory.copy(last = memory.last + (pkg to purpose))
-        save(if (purpose == Purpose.BROWSE) remembered.withBrowse(today) else remembered)
+        save(if (purpose == Purpose.BROWSE || night) remembered.withBrowse(today) else remembered)
         log(rules, pkg, "opening", now, purpose)
         return answer
     }
