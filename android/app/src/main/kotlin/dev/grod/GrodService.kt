@@ -74,22 +74,35 @@ class GrodService : AccessibilityService() {
     private fun scrolled(pkg: String, now: Long) {
         // The filter can lag a rules change by an event, so the package is checked against the rules too.
         val rule = rules.rulesFor(pkg).firstOrNull()
-        if (!session.paused && pkg in openingTargets) {
+        val clock = SystemClock.elapsedRealtime()
+        if (session.paused || (rule == null && pkg !in openingTargets)) return
+        // Back in a target before the pause is over (Home or Recents, then the app again): the same pause, with the time left.
+        session.pauseLeft(clock)?.let { left ->
+            pause(pkg, rule, left, null, "returned")
+            return
+        }
+        if (!session.urgent && pkg in openingTargets) {
             watch.windowOver(pkg, now)?.let { reason ->
-                pause(pkg, rule, session.pauseNow(SystemClock.elapsedRealtime(), rules.scroll), reason)
+                pause(pkg, rule, session.pauseNow(clock, rules.scroll), reason, "paused")
                 return
             }
         }
         if (rule == null) return
-        val seconds = session.scroll(SystemClock.elapsedRealtime(), rules.scroll) ?: return
-        pause(pkg, rule, seconds, null)
+        val seconds = session.scroll(clock, rules.scroll) ?: return
+        // An urgent check has no wait and is no pause; its answer is what gets logged.
+        if (session.urgent) pause(pkg, rule, 0, null, null) else pause(pkg, rule, seconds, null, "paused")
     }
 
-    /** A package only in launcher.distracting has no rule; its pause shows the app's name and logs rule "launcher". */
-    private fun pause(pkg: String, rule: Rule?, seconds: Int, reason: String?) {
+    /**
+     * A package only in launcher.distracting has no rule; its pause shows the app's name and logs rule "launcher".
+     * [action] is logged when the screen shows: "paused" for a new pause, "returned" for one shown again, null for an urgent check.
+     */
+    private fun pause(pkg: String, rule: Rule?, seconds: Int, reason: String?, action: String?) {
         val ruleId = rule?.id ?: "launcher"
-        if (rule != null) store.countFire(rule.id)
-        LogWriter.get(this).append("events", LogLines.event(System.currentTimeMillis(), ruleId, pkg, "paused"), rules.keepDays)
+        if (rule != null && action == "paused") store.countFire(rule.id)
+        if (action != null) LogWriter.get(this).append("events", LogLines.event(System.currentTimeMillis(), ruleId, pkg, action), rules.keepDays)
+        // Paused from here, not from the screen's onCreate: a fling's scroll events in between would each show the pause again.
+        session.paused = true
         startActivity(
             Intent(this, ScrollPauseActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -99,7 +112,8 @@ class GrodService : AccessibilityService() {
                 .putExtra(ScrollPauseActivity.EXTRA_WHY, rule?.why)
                 .putExtra(ScrollPauseActivity.EXTRA_REASON, reason)
                 .putExtra(ScrollPauseActivity.EXTRA_SECONDS, seconds)
-                .putExtra(ScrollPauseActivity.EXTRA_SCROLLED_MS, session.sessionMs),
+                .putExtra(ScrollPauseActivity.EXTRA_URGENT_CHECK, action == null)
+                .putExtra(ScrollPauseActivity.EXTRA_SCROLLED_MS, if (action == null) session.urgentMs else session.sessionMs),
         )
     }
 

@@ -25,11 +25,31 @@ class ScrollSession {
     var sessionMs = 0L
         private set
 
+    /**
+     * Set by "Urgent" on the pause screen (docs/rules.md, "Scroll pause"): scrolling then brings a
+     * check without a wait every [URGENT_CHECK_MS] instead of pauses, until Leave or the session resets.
+     */
+    var urgent = false
+        private set
+
+    /** Scroll time since "Urgent", for the check screen. */
+    var urgentMs = 0L
+        private set
+
     private var sincePauseMs = 0L
     private var pauses = 0
     private var lastScrollAt: Long? = null
 
-    /** Counts one scroll event; returns the pause length in seconds when a pause is due. */
+    /** When the pause shown last ends. Leaving its screen does not end it, so coming back early shows it again. */
+    private var pauseEndsAt = 0L
+
+    /** Seconds left of the pause shown last, or null when it is over (or "Urgent" ended it). */
+    fun pauseLeft(now: Long): Int? = ((pauseEndsAt - now + 999) / 1000).toInt().takeIf { it > 0 }
+
+    /**
+     * Counts one scroll event; returns the pause length in seconds when a pause is due. In urgent mode
+     * it returns 0 when a check is due: a screen without a wait that does not count as a pause.
+     */
     fun scroll(now: Long, settings: ScrollSettings): Int? {
         if (paused) return null
         val last = resetIfIdle(now, settings)
@@ -39,8 +59,14 @@ class ScrollSession {
         lastScrollAt = now
         sessionMs += added
         sincePauseMs += added
+        if (urgent) {
+            urgentMs += added
+            if (sincePauseMs < URGENT_CHECK_MS) return null
+            sincePauseMs = 0
+            return 0
+        }
         if (sincePauseMs < settings.freeSeconds * 1000L) return null
-        return nextPause(settings)
+        return nextPause(now, settings)
     }
 
     /**
@@ -50,7 +76,19 @@ class ScrollSession {
     fun pauseNow(now: Long, settings: ScrollSettings): Int {
         resetIfIdle(now, settings)
         lastScrollAt = now
-        return nextPause(settings)
+        return nextPause(now, settings)
+    }
+
+    /** "Urgent" on the pause screen: the pause ends now and checks take over from pauses. */
+    fun startUrgent() {
+        urgent = true
+        urgentMs = 0
+        sincePauseMs = 0
+        pauseEndsAt = 0
+    }
+
+    fun endUrgent() {
+        urgent = false
     }
 
     /** Starts the session over after resetMinutes without scrolling; returns the last scroll time that still counts. */
@@ -60,18 +98,21 @@ class ScrollSession {
         sessionMs = 0
         sincePauseMs = 0
         pauses = 0
+        urgent = false
         return null
     }
 
-    private fun nextPause(settings: ScrollSettings): Int {
+    private fun nextPause(now: Long, settings: ScrollSettings): Int {
         sincePauseMs = 0
-        val seconds = min(settings.firstPauseSeconds * settings.growth.pow(pauses), settings.maxPauseSeconds.toDouble())
+        val seconds = min(settings.firstPauseSeconds * settings.growth.pow(pauses), settings.maxPauseSeconds.toDouble()).roundToInt()
         pauses++
-        return seconds.roundToInt()
+        pauseEndsAt = now + seconds * 1000L
+        return seconds
     }
 
     companion object {
         const val MAX_STEP_MS = 5_000L
+        const val URGENT_CHECK_MS = 30_000L
 
         /** "40 s" under a minute, whole minutes after. */
         fun label(ms: Long): String = if (ms < 60_000) "${ms / 1000} s" else "${(ms + 30_000) / 60_000} min"

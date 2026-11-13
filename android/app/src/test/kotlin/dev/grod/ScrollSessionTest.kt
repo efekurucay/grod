@@ -1,6 +1,7 @@
 package dev.grod
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -124,6 +125,45 @@ class ScrollSessionTest {
         assertEquals(40, session.pauseNow(at + 1_000, defaults))
         // After resetMinutes without scrolling it starts over like any pause.
         assertEquals(10, session.pauseNow(at + 1_000 + 15 * 60_000, defaults))
+    }
+
+    @Test
+    fun aPauseKeepsRunningAfterItsScreenIsLeft() {
+        val session = ScrollSession()
+        val (seconds, at) = scrollUntilPause(session, 0)
+        assertEquals(10, seconds)
+        // Home and back after 3 s: the same pause with 7 s left, and the next pause is not brought forward.
+        assertEquals(7, session.pauseLeft(at + 3_000))
+        assertNull(session.pauseLeft(at + 10_000))
+        val (next, _) = scrollUntilPause(session, at + 10_000)
+        assertEquals(20, next)
+    }
+
+    @Test
+    fun urgentEndsThePauseAndChecksEveryThirtySecondsUntilLeave() {
+        val session = ScrollSession()
+        val (_, at) = scrollUntilPause(session, 0)
+        session.startUrgent()
+        assertNull(session.pauseLeft(at + 1_000))
+        // A check (0, no wait) after 30 s of scrolling, not a pause after freeSeconds.
+        val (check, checkAt) = scrollUntilPause(session, at + 1_000)
+        assertEquals(0, check)
+        assertEquals(at + 30_000, checkAt)
+        assertEquals(30_000L, session.urgentMs)
+        assertNull(session.pauseLeft(checkAt))
+        // Leave ends it: pauses come back at the next length.
+        session.endUrgent()
+        val (next, _) = scrollUntilPause(session, checkAt + 1_000)
+        assertEquals(20, next)
+    }
+
+    @Test
+    fun urgentEndsWhenTheSessionResets() {
+        val session = ScrollSession()
+        scrollUntilPause(session, 0)
+        session.startUrgent()
+        session.scroll(61_000 + 15 * 60_000, defaults)
+        assertFalse(session.urgent)
     }
 
     @Test
