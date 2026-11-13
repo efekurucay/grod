@@ -1,10 +1,11 @@
 ## What's new
 
-- **Opening check (Android).** When Instagram or another distracting app opens after 5 minutes away, by any route, one tap says what for: Message, Look something up or Browse. Quick purposes open at once with a time window grod learns from your own sessions; one that keeps running over loses its quick open; Browse waits first, longer with each Browse that day. It replaces the launcher's fixed pause.
-- **A calmer grod app.** Four tabs (Today, Notifications, Apps, Settings) with Lucide icons.
-- **Notification history on the phone.** Every notification with its full text, one line per chat message or email; search and an app filter; swipe a row to delete it, or delete a whole app, conversation, day or everything.
-- **Notifications five times a day** by default: 08:30, 12:30, 15:30, 18:30, 21:30.
-- **Wallpapers** for phone and desktop on the website.
+- **The scroll pause can't be skipped (Android).** Going Home or to Recents and back brings the pause back with the time it had left.
+- **Urgent (Android).** The pause screen offers "Urgent" for when you really need the app now. It opens at once, then asks every 30 seconds of scrolling whether it is still urgent, so you see how long "just this" took.
+- **Night hours.** From 00:00 to 06:00 (configurable) every answer to the opening check waits, Message too.
+- **A quieter home screen.** Only apps you opened in the last 7 days are shown, most used first; the rest are a search away. Search by voice with the microphone.
+- **Dock.** A fixed bottom row for the apps you need every day, drawn with their own logos in one color.
+- **Uninstall suggestions.** Apps you installed and haven't opened for 30 days are listed in the grod app's Apps tab, one tap to uninstall or keep.
 
 ## Install
 
