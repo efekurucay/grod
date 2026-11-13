@@ -165,7 +165,15 @@
   },
   "launcher": {
     "distracting": [],
-    "hidden": []
+    "hidden": [],
+    "dock": [
+      "com.whatsapp",
+      "com.huawei.camera",
+      "com.google.android.apps.youtube.music",
+      "com.microsoft.teams",
+      "com.google.android.apps.messaging",
+      "com.garanti.cepsubesi"
+    ]
   },
-  "revision": "83a3f725fc1d"
+  "revision": "5853892310cf"
 }
