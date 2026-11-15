@@ -27,7 +27,8 @@ class ScrollSession {
 
     /**
      * Set by "Urgent" on the pause screen (docs/rules.md, "Scroll pause"): scrolling then brings a
-     * check without a wait every [URGENT_CHECK_MS] instead of pauses, until Leave or the session resets.
+     * check without a wait every [URGENT_CHECK_MS] instead of pauses, until Leave, [URGENT_PASS_MS] of
+     * scrolling (the next pause comes instead of a check) or the session resets.
      */
     var urgent = false
         private set
@@ -48,7 +49,8 @@ class ScrollSession {
 
     /**
      * Counts one scroll event; returns the pause length in seconds when a pause is due. In urgent mode
-     * it returns 0 when a check is due: a screen without a wait that does not count as a pause.
+     * it returns 0 when a check is due: a screen without a wait that does not count as a pause. Once
+     * the urgent pass is used up, urgent mode ends and the pause due then is returned.
      */
     fun scroll(now: Long, settings: ScrollSettings): Int? {
         if (paused) return null
@@ -62,8 +64,12 @@ class ScrollSession {
         if (urgent) {
             urgentMs += added
             if (sincePauseMs < URGENT_CHECK_MS) return null
-            sincePauseMs = 0
-            return 0
+            if (urgentMs < URGENT_PASS_MS) {
+                sincePauseMs = 0
+                return 0
+            }
+            urgent = false
+            return nextPause(now, settings)
         }
         if (sincePauseMs < settings.freeSeconds * 1000L) return null
         return nextPause(now, settings)
@@ -113,6 +119,12 @@ class ScrollSession {
     companion object {
         const val MAX_STEP_MS = 5_000L
         const val URGENT_CHECK_MS = 30_000L
+
+        /** Urgent scrolling allowed per pass, so "Urgent" cannot turn into a whole session. */
+        const val URGENT_PASS_MS = 120_000L
+
+        /** How long the pause screen is up before it offers "Urgent", so it is not a reflex. */
+        const val URGENT_AFTER_MS = 20_000L
 
         /** "40 s" under a minute, whole minutes after. */
         fun label(ms: Long): String = if (ms < 60_000) "${ms / 1000} s" else "${(ms + 30_000) / 60_000} min"

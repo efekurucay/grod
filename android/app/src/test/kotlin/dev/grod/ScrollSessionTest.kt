@@ -158,6 +158,23 @@ class ScrollSessionTest {
     }
 
     @Test
+    fun urgentEndsAfterTwoMinutesWithTheNextPause() {
+        val session = ScrollSession()
+        val (_, at) = scrollUntilPause(session, 0)
+        session.startUrgent()
+        var t = at + 1_000
+        repeat(3) {
+            val (check, checkAt) = scrollUntilPause(session, t)
+            assertEquals(0, check)
+            t = checkAt + 1_000
+        }
+        // At 2 min of urgent scrolling the next pause comes instead of a fourth check, and urgent is over.
+        val (pause, _) = scrollUntilPause(session, t)
+        assertEquals(20, pause)
+        assertFalse(session.urgent)
+    }
+
+    @Test
     fun urgentEndsWhenTheSessionResets() {
         val session = ScrollSession()
         scrollUntilPause(session, 0)

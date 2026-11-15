@@ -15,7 +15,8 @@ import android.widget.TextView
 
 /**
  * The scroll pause screen (docs/rules.md, "Scroll pause"), started by [GrodService] in its own task
- * on top of the app. "Leave" goes home at any time; "Urgent" during the countdown and "Continue" after
+ * on top of the app. "Leave" goes home at any time; "Urgent" during the countdown, once the screen has
+ * been up for [ScrollSession.URGENT_AFTER_MS], and "Continue" after
  * it uncover the app again. Leaving it any other way (Back, Recents) counts as "Leave". It also shows
  * the urgent check, which has no countdown and offers "Still urgent" instead.
  */
@@ -28,6 +29,9 @@ class ScrollPauseActivity : Activity() {
 
     /** elapsedRealtime when the wait is over; kept across a rotation so it does not start over. */
     private var endsAt = 0L
+
+    /** elapsedRealtime when the screen first showed, for when "Urgent" appears; kept across a rotation. */
+    private var shownAt = 0L
     private var decided = false
 
     /** An urgent check (no wait): "Still urgent" takes the place of "Continue". */
@@ -46,6 +50,7 @@ class ScrollPauseActivity : Activity() {
         ui = Ui(this)
         endsAt = savedInstanceState?.getLong(K_ENDS_AT)
             ?: (SystemClock.elapsedRealtime() + intent.getIntExtra(EXTRA_SECONDS, 0) * 1000L)
+        shownAt = savedInstanceState?.getLong(K_SHOWN_AT) ?: SystemClock.elapsedRealtime()
 
         // Transient focus makes the app behind pause its video or audio while this screen is up.
         focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
@@ -87,6 +92,7 @@ class ScrollPauseActivity : Activity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putLong(K_ENDS_AT, endsAt)
+        outState.putLong(K_SHOWN_AT, shownAt)
     }
 
     private fun secondsLeft(): Long = ((endsAt - SystemClock.elapsedRealtime() + 999) / 1000).coerceAtLeast(0)
@@ -100,7 +106,8 @@ class ScrollPauseActivity : Activity() {
         val second = when {
             urgentCheck -> ui.button("Still urgent") { decide("still-urgent") }
             // During the wait, Urgent is the way in for something that cannot wait; it is logged for the weekly review.
-            left > 0 -> ui.button("Urgent") { urgent() }
+            left > 0 && SystemClock.elapsedRealtime() - shownAt >= ScrollSession.URGENT_AFTER_MS -> ui.button("Urgent") { urgent() }
+            left > 0 -> return
             else -> ui.button("Continue") { decide("continued") }
         }
         buttons.addView(second,
@@ -162,5 +169,6 @@ class ScrollPauseActivity : Activity() {
         const val EXTRA_URGENT_CHECK = "urgentCheck"
         const val EXTRA_SCROLLED_MS = "scrolledMs"
         private const val K_ENDS_AT = "endsAt"
+        private const val K_SHOWN_AT = "shownAt"
     }
 }
