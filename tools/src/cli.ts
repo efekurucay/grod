@@ -10,6 +10,7 @@ import {
   upsertRule,
   validate,
   openingDefaults,
+  packMinutesDefault,
   scrollDefaults,
   type Rule,
 } from './rules.ts';
@@ -36,6 +37,8 @@ Usage:
   grod opening away <minutes>   minutes out of an app before it asks again
   grod opening quick <minutes>  first window for Message and Look something up
   grod opening night <HH:MM-HH:MM|off>   night hours, when every answer waits
+  grod packs                    packs on the pause screen (Android)
+  grod packs <count> [minutes]  refill: count packs available from now
   grod notifications            batching settings (Android)
   grod notifications on|off
   grod notifications every <minutes>
@@ -103,6 +106,8 @@ async function main(argv: string[]): Promise<void> {
       return scroll(argv.slice(1));
     case 'opening':
       return opening(argv.slice(1));
+    case 'packs':
+      return packs(argv.slice(1));
     case 'notifications':
       return notifications(argv.slice(1));
     case 'phone':
@@ -150,6 +155,22 @@ function scroll([sub, value]: string[]): void {
   file.scroll = { ...file.scroll, [keys[sub as keyof typeof keys]]: Number(need(value, 'number')) };
   save(file);
   console.log(JSON.stringify({ ...scrollDefaults, ...file.scroll }));
+  console.log(deliver());
+}
+
+function packs([count, minutes]: string[]): void {
+  const file = load();
+  if (count === undefined) {
+    console.log(JSON.stringify(file.packs ?? null, null, 2));
+    return;
+  }
+  file.packs = {
+    count: Number(count),
+    minutes: minutes === undefined ? (file.packs?.minutes ?? packMinutesDefault) : Number(minutes),
+    refilled: new Date().toISOString(),
+  };
+  save(file);
+  console.log(JSON.stringify(file.packs));
   console.log(deliver());
 }
 

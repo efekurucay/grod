@@ -10,15 +10,15 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
  * The scroll pause screen (docs/rules.md, "Scroll pause"), started by [GrodService] in its own task
- * on top of the app. "Leave" goes home at any time; "Urgent" during the countdown, once the screen has
- * been up for [ScrollSession.URGENT_AFTER_MS], and "Continue" after
- * it uncover the app again. Leaving it any other way (Back, Recents) counts as "Leave". It also shows
- * the urgent check, which has no countdown and offers "Still urgent" instead.
+ * on top of the app. "Leave" goes home at any time; a pack (docs/rules.md, "Packs") while any are
+ * left, and "Continue" after the countdown, uncover the app again. Leaving it any other way (Back,
+ * Recents) counts as "Leave".
  */
 class ScrollPauseActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
@@ -30,12 +30,7 @@ class ScrollPauseActivity : Activity() {
     /** elapsedRealtime when the wait is over; kept across a rotation so it does not start over. */
     private var endsAt = 0L
 
-    /** elapsedRealtime when the screen first showed, for when "Urgent" appears; kept across a rotation. */
-    private var shownAt = 0L
     private var decided = false
-
-    /** An urgent check (no wait): "Still urgent" takes the place of "Continue". */
-    private val urgentCheck by lazy { intent.getBooleanExtra(EXTRA_URGENT_CHECK, false) }
 
     private val tick = object : Runnable {
         override fun run() {
@@ -46,11 +41,10 @@ class ScrollPauseActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        GrodService.session.paused = true
+        GrodService.session.screenShown()
         ui = Ui(this)
         endsAt = savedInstanceState?.getLong(K_ENDS_AT)
             ?: (SystemClock.elapsedRealtime() + intent.getIntExtra(EXTRA_SECONDS, 0) * 1000L)
-        shownAt = savedInstanceState?.getLong(K_SHOWN_AT) ?: SystemClock.elapsedRealtime()
 
         // Transient focus makes the app behind pause its video or audio while this screen is up.
         focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
@@ -72,7 +66,7 @@ class ScrollPauseActivity : Activity() {
         // A quick opening whose window is over says what the app was opened for instead of the scroll time.
         val scrolled = ScrollSession.label(intent.getLongExtra(EXTRA_SCROLLED_MS, 0))
         val line = intent.getStringExtra(EXTRA_REASON)?.let { "$it." }
-            ?: if (urgentCheck) "Scrolled $scrolled since Urgent. Still urgent?" else "Scrolled $scrolled in this session."
+            ?: "Scrolled $scrolled in this session."
         page.addView(ui.muted(line, 16f).apply {
             gravity = Gravity.CENTER
             setPadding(0, ui.dp(16), 0, ui.dp(32))
@@ -92,7 +86,6 @@ class ScrollPauseActivity : Activity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putLong(K_ENDS_AT, endsAt)
-        outState.putLong(K_SHOWN_AT, shownAt)
     }
 
     private fun secondsLeft(): Long = ((endsAt - SystemClock.elapsedRealtime() + 999) / 1000).coerceAtLeast(0)
@@ -103,28 +96,29 @@ class ScrollPauseActivity : Activity() {
         buttons.removeAllViews()
         // Equal weight: all are quiet buttons, so no choice is pushed.
         buttons.addView(ui.button("Leave") { leave() })
-        val second = when {
-            urgentCheck -> ui.button("Still urgent") { decide("still-urgent") }
-            // During the wait, Urgent is the way in for something that cannot wait; it is logged for the weekly review.
-            left > 0 && SystemClock.elapsedRealtime() - shownAt >= ScrollSession.URGENT_AFTER_MS -> ui.button("Urgent") { urgent() }
-            left > 0 -> return
-            else -> ui.button("Continue") { decide("continued") }
-        }
-        buttons.addView(second,
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(12) })
+        // A pack is the way in for something that cannot wait. There are only a few until the next refill,
+        // so it needs no wait of its own; each one is logged for the weekly review.
+        val packs = RuleStore.get(this).rules.packs
+        val packsLeft = PackStore(this).use.left(packs)
+        if (packsLeft > 0) addButton(ui.button("${packs.minutes} min · $packsLeft left") { pack(packs) })
+        if (left == 0L) addButton(ui.button("Continue") { decide("continued") })
     }
+
+    private fun addButton(button: View) = buttons.addView(button,
+        LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(12) })
 
     private fun leave() {
         if (decided) return
         startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        GrodService.session.endUrgent()
         decide("left")
     }
 
-    private fun urgent() {
+    private fun pack(settings: PackSettings) {
         if (decided) return
-        GrodService.session.startUrgent()
-        decide("urgent")
+        val store = PackStore(this)
+        store.use = store.use.take(settings)
+        GrodService.session.startPack(SystemClock.elapsedRealtime(), settings.minutes)
+        decide("pack")
     }
 
     private fun decide(action: String) {
@@ -149,12 +143,9 @@ class ScrollPauseActivity : Activity() {
         if (!isChangingConfigurations) {
             // noHistory finishes this screen when the user goes elsewhere (Recents, a notification).
             // The pause keeps running in the session, so coming back before it is over shows it again.
-            if (!decided) {
-                GrodService.session.endUrgent()
-                log("left")
-            }
+            if (!decided) log("left")
             getSystemService(AudioManager::class.java).abandonAudioFocusRequest(focus)
-            GrodService.session.paused = false
+            GrodService.session.screenGone()
         }
         super.onDestroy()
     }
@@ -166,9 +157,7 @@ class ScrollPauseActivity : Activity() {
         const val EXTRA_WHY = "why"
         const val EXTRA_REASON = "reason"
         const val EXTRA_SECONDS = "seconds"
-        const val EXTRA_URGENT_CHECK = "urgentCheck"
         const val EXTRA_SCROLLED_MS = "scrolledMs"
         private const val K_ENDS_AT = "endsAt"
-        private const val K_SHOWN_AT = "shownAt"
     }
 }

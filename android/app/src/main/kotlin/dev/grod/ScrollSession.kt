@@ -18,24 +18,39 @@ data class ScrollSettings(
  * times are milliseconds on a clock that keeps running while the phone sleeps.
  */
 class ScrollSession {
-    /** Set while the pause screen is up; scroll events then count for nothing. */
-    var paused = false
+    /** Set while the pause screen is up. */
+    private var screenUp = false
+
+    /** When the service last started the pause screen, which takes a moment to come up. */
+    private var requestedAt: Long? = null
+
+    /** The service starts the pause screen: from now, a fling's further scroll events must not start it again. */
+    fun screenRequested(now: Long) {
+        requestedAt = now
+    }
+
+    fun screenShown() {
+        screenUp = true
+        requestedAt = null
+    }
+
+    fun screenGone() {
+        screenUp = false
+    }
+
+    /**
+     * True while the pause screen is up or on its way; scroll events then count for nothing. The
+     * system can drop a start (one right as the previous screen closes never showed), so a screen that
+     * has not come up within [SCREEN_START_MS] stops holding them, or scrolling would never pause again.
+     */
+    fun paused(now: Long): Boolean = screenUp || requestedAt?.let { now - it < SCREEN_START_MS } == true
 
     /** Scroll time in this session, for the pause screen. */
     var sessionMs = 0L
         private set
 
-    /**
-     * Set by "Urgent" on the pause screen (docs/rules.md, "Scroll pause"): scrolling then brings a
-     * check without a wait every [URGENT_CHECK_MS] instead of pauses, until Leave, [URGENT_PASS_MS] of
-     * scrolling (the next pause comes instead of a check) or the session resets.
-     */
-    var urgent = false
-        private set
-
-    /** Scroll time since "Urgent", for the check screen. */
-    var urgentMs = 0L
-        private set
+    /** When the pack taken on the pause screen ends (docs/rules.md, "Packs"), or null without one. */
+    private var packEndsAt: Long? = null
 
     private var sincePauseMs = 0L
     private var pauses = 0
@@ -44,16 +59,25 @@ class ScrollSession {
     /** When the pause shown last ends. Leaving its screen does not end it, so coming back early shows it again. */
     private var pauseEndsAt = 0L
 
-    /** Seconds left of the pause shown last, or null when it is over (or "Urgent" ended it). */
+    /** Seconds left of the pause shown last, or null when it is over (or a pack ended it). */
     fun pauseLeft(now: Long): Int? = ((pauseEndsAt - now + 999) / 1000).toInt().takeIf { it > 0 }
 
-    /**
-     * Counts one scroll event; returns the pause length in seconds when a pause is due. In urgent mode
-     * it returns 0 when a check is due: a screen without a wait that does not count as a pause. Once
-     * the urgent pass is used up, urgent mode ends and the pause due then is returned.
-     */
+    fun inPack(now: Long): Boolean = packEndsAt?.let { now < it } == true
+
+    /** Counts one scroll event; returns the pause length in seconds when a pause is due. */
     fun scroll(now: Long, settings: ScrollSettings): Int? {
-        if (paused) return null
+        if (paused(now)) return null
+        packEndsAt?.let { end ->
+            // Scrolling in a pack counts for nothing, but it keeps the session from going idle.
+            if (now < end) {
+                lastScrollAt = now
+                return null
+            }
+            packEndsAt = null
+            // Still at it when the pack is over: the next pause comes at once.
+            val seen = lastScrollAt
+            if (seen != null && now - seen < settings.resetMinutes * 60_000L) return pauseNow(now, settings)
+        }
         val last = resetIfIdle(now, settings)
         // The first scroll of a session adds nothing; a swipe after watching for a while adds only the cap,
         // so watching does not count as scrolling.
@@ -61,16 +85,6 @@ class ScrollSession {
         lastScrollAt = now
         sessionMs += added
         sincePauseMs += added
-        if (urgent) {
-            urgentMs += added
-            if (sincePauseMs < URGENT_CHECK_MS) return null
-            if (urgentMs < URGENT_PASS_MS) {
-                sincePauseMs = 0
-                return 0
-            }
-            urgent = false
-            return nextPause(now, settings)
-        }
         if (sincePauseMs < settings.freeSeconds * 1000L) return null
         return nextPause(now, settings)
     }
@@ -85,16 +99,11 @@ class ScrollSession {
         return nextPause(now, settings)
     }
 
-    /** "Urgent" on the pause screen: the pause ends now and checks take over from pauses. */
-    fun startUrgent() {
-        urgent = true
-        urgentMs = 0
+    /** A pack taken on the pause screen: the pause ends now and none comes for [minutes]. */
+    fun startPack(now: Long, minutes: Int) {
+        packEndsAt = now + minutes * 60_000L
         sincePauseMs = 0
         pauseEndsAt = 0
-    }
-
-    fun endUrgent() {
-        urgent = false
     }
 
     /** Starts the session over after resetMinutes without scrolling; returns the last scroll time that still counts. */
@@ -104,12 +113,13 @@ class ScrollSession {
         sessionMs = 0
         sincePauseMs = 0
         pauses = 0
-        urgent = false
         return null
     }
 
     private fun nextPause(now: Long, settings: ScrollSettings): Int {
         sincePauseMs = 0
+        // A pause right as a pack ends is the one its end would bring.
+        packEndsAt = null
         val seconds = min(settings.firstPauseSeconds * settings.growth.pow(pauses), settings.maxPauseSeconds.toDouble()).roundToInt()
         pauses++
         pauseEndsAt = now + seconds * 1000L
@@ -118,13 +128,9 @@ class ScrollSession {
 
     companion object {
         const val MAX_STEP_MS = 5_000L
-        const val URGENT_CHECK_MS = 30_000L
 
-        /** Urgent scrolling allowed per pass, so "Urgent" cannot turn into a whole session. */
-        const val URGENT_PASS_MS = 120_000L
-
-        /** How long the pause screen is up before it offers "Urgent", so it is not a reflex. */
-        const val URGENT_AFTER_MS = 20_000L
+        /** Android holds background activity starts for up to 5 s after Home; a later screen never came. */
+        const val SCREEN_START_MS = 5_000L
 
         /** "40 s" under a minute, whole minutes after. */
         fun label(ms: Long): String = if (ms < 60_000) "${ms / 1000} s" else "${(ms + 30_000) / 60_000} min"

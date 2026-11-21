@@ -116,7 +116,7 @@ class RulesTest {
 
     @Test
     fun parsesOpeningSettingsWithDefaults() {
-        assertEquals(OpeningSettings(5, 2), Rules.parse(read("grod.rulesFile")).opening)
+        assertEquals(OpeningSettings(5, 2, 23 * 60 + 30, 6 * 60), Rules.parse(read("grod.rulesFile")).opening)
         assertEquals(OpeningSettings(), Rules.parse("""{"schemaVersion":1,"rules":[]}""").opening)
         assertEquals(OpeningSettings(10, 2), Rules.parse("""{"schemaVersion":1,"rules":[],"opening":{"awayMinutes":10}}""").opening)
         assertEquals(10 * 60_000L, OpeningSettings(10, 2).awayMs)

@@ -13,6 +13,7 @@ import {
   save,
   upsertRule,
   openingDefaults,
+  packMinutesDefault,
   scrollDefaults,
   type Rule,
 } from './rules.ts';
@@ -229,6 +230,30 @@ server.registerTool(
       file.opening = { ...file.opening, ...Object.fromEntries(Object.entries(changes).filter(([, v]) => v !== undefined)) };
       save(file);
       return `${JSON.stringify({ ...openingDefaults, ...file.opening })}. ${deliver()}`;
+    }),
+);
+
+server.registerTool(
+  'set_packs',
+  {
+    description:
+      'Android packs: the scroll pause screen offers a pack, minutes without any scroll pause, out of a total of count. Giving count refills: all count packs are available again on the phone. Packs used show as "pack" in phone_stats. Returns the full settings.',
+    inputSchema: z.object({
+      count: z.number().int().min(0).max(20).optional().describe('Packs available from now; refills'),
+      minutes: z.number().int().min(1).max(30).optional(),
+    }),
+  },
+  ({ count, minutes }) =>
+    tool(() => {
+      const file = load();
+      if (count === undefined && !file.packs) throw new Error('no packs yet: give count');
+      file.packs = {
+        count: count ?? file.packs!.count,
+        minutes: minutes ?? file.packs?.minutes ?? packMinutesDefault,
+        refilled: count === undefined ? file.packs!.refilled : new Date().toISOString(),
+      };
+      save(file);
+      return `${JSON.stringify(file.packs)}. ${deliver()}`;
     }),
 );
 

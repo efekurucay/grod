@@ -3,6 +3,7 @@ package dev.grod
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ScrollSessionTest {
@@ -101,14 +102,38 @@ class ScrollSessionTest {
     fun eventsWhilePausedAreIgnored() {
         val session = ScrollSession()
         val (_, at) = scrollUntilPause(session, 0)
-        session.paused = true
+        session.screenRequested(at)
+        session.screenShown()
         for (i in 1..400) assertNull(session.scroll(at + i * 1_000L, defaults))
         assertEquals(60_000L, session.sessionMs)
 
         // Ignored events do not count as scrolling either, so the gap since the last counted one applies.
-        session.paused = false
+        session.screenGone()
         session.scroll(at + 401_000, defaults)
         assertEquals(65_000L, session.sessionMs)
+    }
+
+    @Test
+    fun aPauseScreenThatNeverComesUpStopsHoldingScrollEvents() {
+        val session = ScrollSession()
+        val (_, at) = scrollUntilPause(session, 0)
+        // The system dropped the start (the screen before it was still closing): no screen, so no screenShown.
+        session.screenRequested(at)
+        assertTrue(session.paused(at + ScrollSession.SCREEN_START_MS - 1))
+        assertFalse(session.paused(at + ScrollSession.SCREEN_START_MS))
+        // Scrolling counts again, and the next pause comes.
+        val (next, _) = scrollUntilPause(session, at + ScrollSession.SCREEN_START_MS)
+        assertEquals(20, next)
+    }
+
+    @Test
+    fun aShownPauseScreenHoldsUntilItIsGone() {
+        val session = ScrollSession()
+        session.screenRequested(0)
+        session.screenShown()
+        assertTrue(session.paused(ScrollSession.SCREEN_START_MS * 100))
+        session.screenGone()
+        assertFalse(session.paused(ScrollSession.SCREEN_START_MS * 100))
     }
 
     @Test
@@ -140,47 +165,41 @@ class ScrollSessionTest {
     }
 
     @Test
-    fun urgentEndsThePauseAndChecksEveryThirtySecondsUntilLeave() {
+    fun aPackHoldsPausesForItsMinutesThenTheNextPauseComesAtOnce() {
         val session = ScrollSession()
         val (_, at) = scrollUntilPause(session, 0)
-        session.startUrgent()
+        session.startPack(at, 5)
+        // The pause it was taken from is over, and five minutes of scrolling bring nothing.
         assertNull(session.pauseLeft(at + 1_000))
-        // A check (0, no wait) after 30 s of scrolling, not a pause after freeSeconds.
-        val (check, checkAt) = scrollUntilPause(session, at + 1_000)
-        assertEquals(0, check)
-        assertEquals(at + 30_000, checkAt)
-        assertEquals(30_000L, session.urgentMs)
-        assertNull(session.pauseLeft(checkAt))
-        // Leave ends it: pauses come back at the next length.
-        session.endUrgent()
-        val (next, _) = scrollUntilPause(session, checkAt + 1_000)
-        assertEquals(20, next)
+        for (t in at + 1_000 until at + 5 * 60_000 step 1_000) assertNull(session.scroll(t, defaults))
+        assertTrue(session.inPack(at + 5 * 60_000 - 1))
+        assertFalse(session.inPack(at + 5 * 60_000))
+        // The first scroll after it brings the next pause at once.
+        assertEquals(20, session.scroll(at + 5 * 60_000, defaults))
+        assertNull(session.scroll(at + 5 * 60_000 + 1_000, defaults))
     }
 
     @Test
-    fun urgentEndsAfterTwoMinutesWithTheNextPause() {
+    fun aPackOverWhileTheSessionWentIdleBringsNoPause() {
         val session = ScrollSession()
         val (_, at) = scrollUntilPause(session, 0)
-        session.startUrgent()
-        var t = at + 1_000
-        repeat(3) {
-            val (check, checkAt) = scrollUntilPause(session, t)
-            assertEquals(0, check)
-            t = checkAt + 1_000
-        }
-        // At 2 min of urgent scrolling the next pause comes instead of a fourth check, and urgent is over.
-        val (pause, _) = scrollUntilPause(session, t)
-        assertEquals(20, pause)
-        assertFalse(session.urgent)
+        session.startPack(at, 5)
+        // Back after resetMinutes without scrolling: a new session, counted from 0.
+        val back = at + 20 * 60_000
+        assertNull(session.scroll(back, defaults))
+        val (first, firstAt) = scrollUntilPause(session, back + 1_000)
+        assertEquals(10, first)
+        assertEquals(back + 60_000, firstAt)
     }
 
     @Test
-    fun urgentEndsWhenTheSessionResets() {
+    fun aPauseRightAfterAPackTakesItsPlace() {
         val session = ScrollSession()
-        scrollUntilPause(session, 0)
-        session.startUrgent()
-        session.scroll(61_000 + 15 * 60_000, defaults)
-        assertFalse(session.urgent)
+        val (_, at) = scrollUntilPause(session, 0)
+        session.startPack(at, 5)
+        // A quick window ran out during the pack: its pause comes first, and the pack's end brings no second one.
+        assertEquals(20, session.pauseNow(at + 5 * 60_000, defaults))
+        assertNull(session.scroll(at + 5 * 60_000 + 1_000, defaults))
     }
 
     @Test

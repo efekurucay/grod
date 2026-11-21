@@ -28,6 +28,9 @@
     "opening": {
       "$ref": "#/$defs/opening"
     },
+    "packs": {
+      "$ref": "#/$defs/packs"
+    },
     "notifications": {
       "$ref": "#/$defs/notifications"
     },
@@ -305,6 +308,35 @@
           "minimum": 1,
           "maximum": 1440,
           "default": 15
+        }
+      }
+    },
+    "packs": {
+      "description": "Packs on Android: a few minutes without scroll pauses, taken from the pause screen, out of a total that is refilled by hand (docs/rules.md \"Packs\").",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "count",
+        "refilled"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Packs available since refilled."
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "default": 5,
+          "description": "Length of one pack."
+        },
+        "refilled": {
+          "type": "string",
+          "minLength": 1,
+          "description": "When count was last given (ISO time). A new value makes all count packs available again on the phone."
         }
       }
     },

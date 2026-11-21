@@ -137,7 +137,8 @@
   },
   "opening": {
     "awayMinutes": 5,
-    "quickMinutes": 2
+    "quickMinutes": 2,
+    "nightFrom": "23:30"
   },
   "notifications": {
     "enabled": true,
@@ -175,5 +176,10 @@
       "com.garanti.cepsubesi"
     ]
   },
-  "revision": "5853892310cf"
+  "packs": {
+    "count": 5,
+    "minutes": 5,
+    "refilled": "2026-11-21T13:25:07.619Z"
+  },
+  "revision": "0b654a3c151e"
 }

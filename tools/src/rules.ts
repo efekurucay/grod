@@ -36,12 +36,18 @@ export type Opening = { awayMinutes?: number; quickMinutes?: number; nightFrom?:
 /** docs/rules.md "Opening check": the values a missing field takes. */
 export const openingDefaults: Required<Opening> = { awayMinutes: 5, quickMinutes: 2, nightFrom: '00:00', nightTo: '06:00' };
 
+export type Packs = { count: number; minutes?: number; refilled: string };
+
+/** docs/rules.md "Packs": the length a missing minutes takes. */
+export const packMinutesDefault = 5;
+
 export type RulesFile = {
   $schema?: string;
   schemaVersion: 1;
   rules: Rule[];
   scroll?: Scroll;
   opening?: Opening;
+  packs?: Packs;
   notifications?: Notifications;
   review?: Review;
   launcher?: Launcher;

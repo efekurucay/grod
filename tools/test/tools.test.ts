@@ -54,6 +54,14 @@ test('night hours are local HH:MM times', () => {
   assert.ok(rules.validate({ ...file, opening: { nightTo: '6:00' } }).length > 0);
 });
 
+test('packs need a count and a refill time', () => {
+  const file = rules.load();
+  assert.deepEqual(rules.validate({ ...file, packs: { count: 5, minutes: 5, refilled: '2026-11-21T13:00:00.000Z' } }), []);
+  assert.ok(rules.validate({ ...file, packs: { count: 5 } }).length > 0);
+  assert.ok(rules.validate({ ...file, packs: { count: 21, refilled: 'x' } }).length > 0);
+  assert.ok(rules.validate({ ...file, packs: { count: 5, minutes: 0, refilled: 'x' } }).length > 0);
+});
+
 test('upsert, save and revision round-trip', () => {
   const before = rules.revision();
   const file = rules.load();
@@ -94,7 +102,7 @@ test('MCP server lists its tools and edits rules over stdio', async (t) => {
   send({ method: 'notifications/initialized' });
   send({ id: 2, method: 'tools/list' });
   const names = (await reply(2)).result.tools.map((t: { name: string }) => t.name).sort();
-  assert.deepEqual(names, ['allow_notifications', 'get_rule', 'list_rules', 'phone_stats', 'remove_rule', 'rules_guide', 'search_notifications', 'set_launcher', 'set_notification_batching', 'set_opening_check', 'set_rule_enabled', 'set_scroll_pause', 'sync', 'upsert_rule', 'weekly_reviews']);
+  assert.deepEqual(names, ['allow_notifications', 'get_rule', 'list_rules', 'phone_stats', 'remove_rule', 'rules_guide', 'search_notifications', 'set_launcher', 'set_notification_batching', 'set_opening_check', 'set_packs', 'set_rule_enabled', 'set_scroll_pause', 'sync', 'upsert_rule', 'weekly_reviews']);
 
   send({ id: 3, method: 'tools/call', params: { name: 'set_rule_enabled', arguments: { id: 'tiktok', enabled: false } } });
   assert.match((await reply(3)).result.content[0].text, /tiktok disabled/);
@@ -102,8 +110,15 @@ test('MCP server lists its tools and edits rules over stdio', async (t) => {
   assert.equal((await reply(4)).result.isError, true);
   send({ id: 5, method: 'tools/call', params: { name: 'set_scroll_pause', arguments: { freeSeconds: 120 } } });
   assert.match((await reply(5)).result.content[0].text, /"freeSeconds":120,"firstPauseSeconds":10/);
+  send({ id: 6, method: 'tools/call', params: { name: 'set_packs', arguments: { count: 5 } } });
+  assert.match((await reply(6)).result.content[0].text, /"count":5,"minutes":5,"refilled":"/);
 
   const saved = JSON.parse(readFileSync(join(home, 'rules/grod.rules.json'), 'utf8'));
   assert.equal(saved.rules.find((r: { id: string }) => r.id === 'tiktok').enabled, false);
   assert.equal(saved.scroll.freeSeconds, 120);
+  // Only a new count refills; changing the length keeps the packs already used.
+  send({ id: 7, method: 'tools/call', params: { name: 'set_packs', arguments: { minutes: 3 } } });
+  await reply(7);
+  const resized = JSON.parse(readFileSync(join(home, 'rules/grod.rules.json'), 'utf8')).packs;
+  assert.deepEqual(resized, { ...saved.packs, minutes: 3 });
 });

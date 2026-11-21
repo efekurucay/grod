@@ -23,6 +23,7 @@ data class RuleSet(
     val review: ReviewSettings? = null,
     val launcher: LauncherSettings = LauncherSettings(),
     val opening: OpeningSettings = OpeningSettings(),
+    val packs: PackSettings = PackSettings(),
 ) {
     /** Days of on-device logs to keep (docs/data.md). */
     val keepDays: Int get() = notifications?.keepDays ?: NotificationSettings.DEFAULT_KEEP_DAYS
@@ -77,7 +78,20 @@ object Rules {
         val review = root.opt("review")?.let { parseReview(it, "review") }
         val launcher = root.opt("launcher")?.let { parseLauncher(it, "launcher") } ?: LauncherSettings()
         val opening = root.opt("opening")?.let { parseOpening(it, "opening") } ?: OpeningSettings()
-        return RuleSet(revision, rules, scroll, notifications, review = review, launcher = launcher, opening = opening)
+        val packs = root.opt("packs")?.let { parsePacks(it, "packs") } ?: PackSettings()
+        return RuleSet(revision, rules, scroll, notifications, review = review, launcher = launcher, opening = opening, packs = packs)
+    }
+
+    private fun parsePacks(raw: Any, path: String): PackSettings {
+        val o = raw as? JSONObject ?: fail(path, "must be an object")
+        unknownKey(o, setOf("count", "minutes", "refilled"))?.let { fail("$path.$it", "unknown field") }
+        val refilled = o.opt("refilled") as? String
+        if (refilled.isNullOrEmpty()) fail("$path.refilled", "must be a non-empty string")
+        return PackSettings(
+            count = int(o.opt("count"), "$path.count", 0..20),
+            minutes = o.opt("minutes")?.let { int(it, "$path.minutes", 1..30) } ?: PackSettings().minutes,
+            refilled = refilled,
+        )
     }
 
     private fun parseScroll(raw: Any, path: String): ScrollSettings {
