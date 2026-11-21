@@ -1,6 +1,7 @@
 ## What's new
 
-- **Urgent is no longer a reflex (Android).** The pause screen offers "Urgent" only after it has been up for 20 seconds, and an urgent pass lasts 2 minutes of scrolling; then the next pause comes, with its wait.
+- **Packs instead of Urgent (Android).** The pause screen offers a pack: a few minutes without scroll pauses, for a chat that cannot wait. There are only a few (5 × 5 minutes to start) until they are refilled at the weekly review, so each one is a choice. When a pack ends, the next pause comes with the next scroll.
+- **Scroll pauses keep coming (Android).** A pause screen started right as the previous one closed could fail to show, and then no pause came until grod restarted. A screen that does not come up within 5 seconds no longer holds scrolling.
 
 ## Install
 
