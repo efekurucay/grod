@@ -3,4 +3,7 @@
     <string name="app_name">grod</string>
     <string name="launcher_label">grod home</string>
     <string name="service_description">grod notices when you open or scroll the apps listed in its rules, such as Instagram, YouTube and TikTok. When one opens it asks what it is for, and after a while of scrolling it shows a pause screen that grows longer each time. It does not read the screen: it only learns that an app came to the front or scrolled, and sends nothing anywhere.</string>
+    <string name="instagram_explore_label">grod · Instagram Explore</string>
+    <string name="instagram_explore_description">Covers Instagram’s Explore recommendations while leaving search available. Grod checks Instagram’s view IDs and positions on this device. It does not read or save text, images, or messages.</string>
+    <string name="instagram_explore_hidden">Recommendations hidden</string>
 </resources>

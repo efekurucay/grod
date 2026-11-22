@@ -51,6 +51,12 @@ When an individual Reel is open, the extension stops Instagram from navigating s
 
 The accessibility service only receives scroll and window-change events from the target packages. It does not read window content (`canRetrieveWindowContent` is off), so it cannot see text, view ids or anything else on screen.
 
+### Instagram Explore (Android)
+
+The optional **grod · Instagram Explore** accessibility service is available from grod’s Settings. When it is enabled and the Instagram rule covers `com.instagram.android`, it looks for Instagram's selected Explore tab, search bar and recommendation grid by view ID. It puts a touch-blocking cover over the grid between the search bar and bottom navigation. Tapping search opens the normal search screen and removes the cover. It also removes the cover when leaving Explore, switching apps or disabling the rule. When the layout cannot be recognized, the app is left usable.
+
+The optional service listens only to Instagram events. It reads view IDs, selection state, visibility and bounds on the device. It reads no text, images or messages, and writes no screen data to logs.
+
 ## Notifications (Android)
 
 The top-level `notifications` object batches app notifications. Settings: `enabled`, `deliverEvery` (minutes) or `deliverAt` (fixed local times such as `["09:00", "13:00", "18:00"]`, which replaces `deliverEvery`), `allow` and `keepDays`.

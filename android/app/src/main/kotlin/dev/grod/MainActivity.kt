@@ -370,6 +370,7 @@ class MainActivity : Activity() {
         settingsBottom.removeAllViews()
         status(settingsBottom)
         setup(settingsBottom, always = true)
+        instagramExplore(settingsBottom)
         if (scrollToReview) {
             scrollToReview = false
             reviewSection?.let { target ->
@@ -467,6 +468,16 @@ class MainActivity : Activity() {
             ui.kv(body, "Last fetch", fetched ?: "never")
         }
         ui.kvEnd(body)
+    }
+
+    private fun instagramExplore(parent: LinearLayout) {
+        val body = ui.section(parent, "Instagram Explore")
+        val enabled = Permissions.instagramExplore(this)
+        val action = ui.button(if (enabled) "Settings" else "Enable",
+            onClick = settings(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        ui.row(body, if (enabled) "On" else "Off",
+            "Hide Explore recommendations on Android. Under Downloaded apps, choose grod · Instagram Explore.",
+            action)
     }
 
     private fun notifications(parent: LinearLayout) {

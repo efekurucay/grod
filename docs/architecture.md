@@ -27,7 +27,7 @@ One rules file drives every platform. An AI agent (Claude Code, Codex) edits it 
 - **MCP server**: lets an agent list, read, write and sync rules with schema errors fed back to it. The `grod-block` skill holds the workflow for "this distracts me lately".
 - **Extension**: counts scrolling on the sites of the rules and shows the pause screen in the page. It also redirects or blocks feed URLs, hides Instagram Explore recommendations and keeps individual Reel links from becoming a feed. It owns Chromium browsers and Firefox.
 - **macOS app**: a local hub, not a second browser enforcer. It hands fresh rules to the extension without a reload, guards Safari (no unsigned Safari extension survives a restart without a paid developer account), and quits native apps that are all feed.
-- **Android app**: the phone is where the scrolling happens. An AccessibilityService receives only scroll and window-change events from the listed packages, with window content access off, so it cannot read the screen. VPN or DNS blocking cannot tell scrolling from reading a message: both come from the same hosts.
+- **Android app**: the phone is where the scrolling happens. The scroll and opening service receives scroll and window-change events from the listed packages, with window content access off. An optional service scoped to Instagram identifies the Explore recommendation grid by view ID and covers it with an accessibility overlay while leaving search accessible.
 
 ## Update paths
 

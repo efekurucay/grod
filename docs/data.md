@@ -2,6 +2,8 @@
 
 grod keeps a few local logs so you (or an agent) can see what distracts you and tune the rules. Nothing is sent anywhere: the logs live in the Android app's private storage, and `grod phone …` reads them over adb.
 
+The optional Android Instagram Explore service checks view IDs, selection state, visibility and bounds on-device. It does not read screen text, images or messages, and it does not log screen data.
+
 ## Files (Android, `files/log/` in app storage)
 
 One JSON object per line. The newest day is plain text and older days are gzipped (`.jsonl.gz`). Files older than `notifications.keepDays` (default 30) are deleted.

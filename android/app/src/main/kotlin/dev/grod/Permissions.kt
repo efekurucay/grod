@@ -10,8 +10,12 @@ import android.provider.Settings
 
 /** The special accesses notification batching and the export need; granted by install.sh or by hand. */
 object Permissions {
-    fun accessibilityService(context: Context): Boolean {
-        val me = ComponentName(context, GrodService::class.java)
+    fun accessibilityService(context: Context): Boolean = accessibilityEnabled(context, GrodService::class.java)
+
+    fun instagramExplore(context: Context): Boolean = accessibilityEnabled(context, InstagramExploreService::class.java)
+
+    private fun accessibilityEnabled(context: Context, service: Class<*>): Boolean {
+        val me = ComponentName(context, service)
         val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
             ?: return false
         return enabled.split(':').any { ComponentName.unflattenFromString(it) == me }
