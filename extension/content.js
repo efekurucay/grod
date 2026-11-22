@@ -2,6 +2,7 @@
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
   const core = globalThis.grodCore;
+  const instagram = globalThis.grodInstagram;
   const PAUSE_URL = api.runtime.getURL('pause.html');
   // Scroll events fire many times a second. One message per interval adds up to the same time, because the
   // background counts the time between messages; at most this much is lost at the end of each burst.
@@ -26,6 +27,7 @@ iframe { display: block; width: 100%; height: 100%; margin: 0; border: 0; }`;
 
   function apply(stored) {
     rules = stored ? core.rulesForHost(stored.file, location.hostname) : [];
+    instagram.setEnabled(rules.some((rule) => rule.id === 'instagram'));
     if (!rules.length) return;
     if (!watching) watch();
     lastHref = '';
@@ -41,7 +43,8 @@ iframe { display: block; width: 100%; height: 100%; margin: 0; border: 0; }`;
   function tick() {
     // A site that re-renders the whole document can drop the overlay; it goes back until "Continue".
     if (overlay && !overlay.host.isConnected) mount();
-    if (location.href === lastHref) return;
+    if (!document.documentElement || location.href === lastHref) return;
+    if (instagram.update()) return;
     lastHref = location.href;
     route();
   }
@@ -92,11 +95,15 @@ iframe { display: block; width: 100%; height: 100%; margin: 0; border: 0; }`;
   function watch() {
     watching = true;
     globalThis.navigation?.addEventListener('currententrychange', tick);
-    addEventListener('popstate', tick);
+    addEventListener('popstate', () => {
+      instagram.resetReel();
+      tick();
+    });
     document.addEventListener('yt-navigate-finish', tick);
     // A page restored from the back-forward cache keeps its old lastHref but must be checked again.
     addEventListener('pageshow', (event) => {
       if (!event.persisted) return;
+      instagram.resetReel();
       lastHref = '';
       tick();
     });

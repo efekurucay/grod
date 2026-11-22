@@ -1,0 +1,11 @@
+/* Only on the Explore landing page. Search and its results can live beside the recommendations. */
+html[data-grod-instagram-explore] main :is(
+  a[href^="/p/"], a[href^="/reel/"], a[href^="/tv/"],
+  a[href^="/"][href*="/reel/"], a[href^="/"][href*="/p/"],
+  a[href^="https://www.instagram.com/p/"], a[href^="https://www.instagram.com/reel/"]
+):not(:is([role="search"], [role="listbox"], [role="dialog"]) *),
+html[data-grod-instagram-explore] main [role="grid"]:has(
+  :is(a[href^="/p/"], a[href^="/reel/"], a[href^="/tv/"])
+):not(:has(:is(input, [role="search"], [role="searchbox"], [role="combobox"]))) {
+  display: none !important;
+}

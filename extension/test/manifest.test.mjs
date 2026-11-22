@@ -11,7 +11,7 @@ test('every file the manifest references exists', () => {
   const manifest = read('manifest.json');
   const files = [
     manifest.background.service_worker,
-    ...manifest.content_scripts.flatMap((c) => c.js),
+    ...manifest.content_scripts.flatMap((c) => [...(c.js ?? []), ...(c.css ?? [])]),
     manifest.action.default_popup,
     'blocked.html',
     'blocked.js',
@@ -33,7 +33,7 @@ test('Firefox build references only files it contains', () => {
   assert.equal(manifest.background.service_worker, undefined);
   const files = [
     ...manifest.background.scripts,
-    ...manifest.content_scripts.flatMap((c) => c.js),
+    ...manifest.content_scripts.flatMap((c) => [...(c.js ?? []), ...(c.css ?? [])]),
     ...manifest.web_accessible_resources.flatMap((w) => w.resources),
     manifest.action.default_popup,
     'pause.js',

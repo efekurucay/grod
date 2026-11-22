@@ -39,17 +39,89 @@ await page.evaluate(() => history.pushState({}, '', '/shorts/aqz-KE-bpKQ'));
 await sleep(2500);
 check('youtube SPA shorts -> watch', page.url().includes('/watch?v=aqz-KE-bpKQ'), page.url());
 
-// 3. Instagram SPA to /reels/ shows blocked page; /p/ stays
-await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded' });
-await sleep(1500);
-await page.evaluate(() => history.pushState({}, '', '/p/ABC123/'));
-await sleep(1200);
-check('instagram /p/ allowed', page.url().includes('instagram.com/p/ABC123'), page.url());
-await page.evaluate(() => history.pushState({}, '', '/reels/'));
-await sleep(2500);
-check('instagram SPA /reels/ blocked', page.url().startsWith('chrome-extension://') && page.url().includes('rule=instagram'), page.url());
-const text = await page.evaluate(() => document.body.innerText);
+// 3. Exercise Instagram routes and DOM with same-origin fixtures, without a login or live feed.
+const instagram = await browser.newPage();
+await instagram.setRequestInterception(true);
+const instagramHtml = `<!doctype html><title>Instagram fixture</title>
+<main>
+  <form role="search"><input aria-label="Search"><a id="search-result" href="/p/FOUND/">Result</a></form>
+  <div role="grid"><a href="/p/TILE/">Post tile</a></div>
+  <a id="reel-tile" href="/example/reel/TILE/">Reel tile</a>
+  <a id="dm" href="/direct/inbox/">Messages</a>
+  <video controls></video>
+</main>`;
+instagram.on('request', (req) => {
+  if (new URL(req.url()).hostname === 'www.instagram.com') {
+    req.respond({ status: 200, contentType: 'text/html', body: instagramHtml });
+  } else req.continue();
+});
+const go = (path) => instagram.evaluate((target) => history.pushState({}, '', target), path);
+const waitForExplore = (enabled) => instagram.waitForFunction(
+  (active) => document.documentElement.hasAttribute('data-grod-instagram-explore') === active, {}, enabled,
+);
+const visible = (selector) => instagram.$eval(selector, (element) => element.checkVisibility());
+await instagram.goto('https://www.instagram.com/explore/');
+await waitForExplore(true);
+check('instagram Explore grid and media tile hidden', !(await visible('[role=grid]')) && !(await visible('#reel-tile')));
+check('instagram Explore search and navigation stay visible', await visible('input') && await visible('#search-result') && await visible('#dm'));
+await go('/explore/search/keyword/?q=test');
+await waitForExplore(false);
+check('instagram search results remain visible', await visible('[role=grid]'));
+await go('/direct/t/123/');
+await go('/reel/ABC123/');
+check('instagram shared Reel stays playable', await instagram.$eval('video', async (video) => {
+  const canvas = document.createElement('canvas');
+  canvas.getContext('2d').fillRect(0, 0, 1, 1);
+  video.muted = true;
+  video.srcObject = canvas.captureStream();
+  await video.play();
+  return !video.paused && video.controls;
+}));
+await go('/reel/ABC123/?shared=1');
+await instagram.evaluate(() => history.replaceState({}, '', '/reel/NEXT/'));
+check('instagram automatic advance cannot change the Reel', instagram.url().endsWith('/reel/ABC123/?shared=1'), instagram.url());
+await go('/reel/NEXT/');
+check('instagram paging cannot change the Reel', instagram.url().endsWith('/reel/ABC123/?shared=1'));
+await instagram.evaluate(() => {
+  const next = document.createElement('a');
+  next.href = '/example/reel/NEXT/';
+  document.body.append(next);
+  next.click();
+});
+await sleep(500);
+check('instagram next Reel link stays on the shared Reel', new URL(instagram.url()).pathname === '/reel/ABC123/');
+await instagram.evaluate(() => history.go(-2));
+await instagram.waitForFunction(() => location.pathname === '/direct/t/123/');
+await go('/reel/NEW/');
+check('instagram opens a different Reel from a chat', instagram.url().endsWith('/reel/NEW/'));
+await go('/explore/');
+await waitForExplore(true);
+await inExtension(async () => {
+  const { rules } = await chrome.storage.local.get('rules');
+  rules.file.rules.find(({ id }) => id === 'instagram').enabled = false;
+  await chrome.storage.local.set({ rules });
+});
+await waitForExplore(false);
+check('disabling Instagram restores the Explore grid', await visible('[role=grid]'));
+await go('/reel/ONE/');
+await go('/reel/TWO/');
+check('disabling Instagram restores Reel navigation', instagram.url().endsWith('/reel/TWO/'));
+await inExtension(async () => {
+  const { rules } = await chrome.storage.local.get('rules');
+  rules.file.rules.find(({ id }) => id === 'instagram').enabled = true;
+  await chrome.storage.local.set({ rules });
+});
+await go('/explore/');
+await waitForExplore(true);
+await go('/p/ABC123/');
+await waitForExplore(false);
+check('instagram /p/ allowed', instagram.url().includes('instagram.com/p/ABC123'), instagram.url());
+await go('/reels/');
+await instagram.waitForFunction(() => location.protocol === 'chrome-extension:');
+check('instagram SPA /reels/ blocked', instagram.url().includes('rule=instagram'), instagram.url());
+const text = await instagram.evaluate(() => document.body.innerText);
 check('blocked page shows rule', text.includes('Instagram'), JSON.stringify(text.slice(0, 120)));
+await instagram.close();
 
 // 4. TikTok blocked
 await page.goto('https://www.tiktok.com/foryou', { waitUntil: 'domcontentloaded' }).catch(() => {});

@@ -46,7 +46,7 @@ jobs:
         run: |
           # Only what the browser loads: no tests, scripts or node_modules.
           zip -r "$RUNNER_TEMP/grod-extension-${{ steps.v.outputs.name }}.zip" \
-            manifest.json background.js content.js blocked.html blocked.js popup.html popup.js rules.json lib icons ui
+            manifest.json background.js content.js blocked.html blocked.js pause.html pause.js popup.html popup.js rules.json lib icons ui
 
       - name: Publish
         env:

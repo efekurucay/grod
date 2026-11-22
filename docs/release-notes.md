@@ -1,7 +1,8 @@
 ## What's new
 
-- **Packs instead of Urgent (Android).** The pause screen offers a pack: a few minutes without scroll pauses, for a chat that cannot wait. There are only a few (5 × 5 minutes to start) until they are refilled at the weekly review, so each one is a choice. When a pack ends, the next pause comes with the next scroll.
-- **Scroll pauses keep coming (Android).** A pause screen started right as the previous one closed could fail to show, and then no pause came until grod restarted. A screen that does not come up within 5 seconds no longer holds scrolling.
+- **Instagram Explore keeps search.** The browser extension hides recommendation tiles on the Explore landing page while the Instagram rule is enabled. Search and its results stay available.
+- **Shared Reels stay on one video.** Open a Reel from a chat or a link and the extension stops Instagram from moving straight to the next one.
+- **Browser scroll pauses work from the release ZIP.** The download includes the pause screen and its script.
 
 ## Install
 

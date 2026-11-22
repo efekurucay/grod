@@ -41,6 +41,12 @@ For a page URL, let `host` = hostname and `target` = pathname + search.
 3. **block** runs next. If any `new RegExp(pattern)` matches `target`, show the grod blocked page (rule title and `why`), which offers "Go back".
 4. Checks run at page start and on every same-document navigation (pushState, replaceState, popstate, site-specific events such as YouTube's `yt-navigate-finish`).
 
+### Instagram (browser extension)
+
+While the Instagram rule is enabled, the extension hides recommendation tiles on the Explore landing page (`/explore/`). Search controls and separate search results pages stay available. Signing in, profiles, DMs and posts keep their usual navigation.
+
+When an individual Reel is open, the extension stops Instagram from navigating straight to a different Reel. The current video, links from chats and browser history still work. Browsers without the Navigation API restore the original Reel if the site changes the address to another Reel within the same page. A layout that does not expose recognizable recommendation links can leave the Explore grid visible.
+
 ## Android service
 
 The accessibility service only receives scroll and window-change events from the target packages. It does not read window content (`canRetrieveWindowContent` is off), so it cannot see text, view ids or anything else on screen.

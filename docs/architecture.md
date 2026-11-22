@@ -1,6 +1,6 @@
 # Architecture
 
-grod lets you scroll a feed for a minute, then makes you wait, a little longer each time. It does not look at what is on the screen, only at whether you scroll and where, so it works the same in every app and site and does not break when an app changes its layout. research/distraction-science.md explains why growing friction beats a hard block or a usage dashboard.
+grod lets you scroll a feed for a minute, then makes you wait, a little longer each time. Scroll pauses depend on whether you scroll and where. The browser extension can also act on specific surfaces such as Explore on Instagram. research/distraction-science.md explains why growing friction beats a hard block or a usage dashboard.
 
 One rules file drives every platform. An AI agent (Claude Code, Codex) edits it through the grod MCP server or CLI, and each platform picks the change up.
 
@@ -25,7 +25,7 @@ One rules file drives every platform. An AI agent (Claude Code, Codex) edits it 
 
 - **Rules file + schema**: one place to change, validated before every save, so a bad agent edit is rejected instead of breaking devices. Behavior is specified in docs/rules.md and mirrored by each platform's tests.
 - **MCP server**: lets an agent list, read, write and sync rules with schema errors fed back to it. The `grod-block` skill holds the workflow for "this distracts me lately".
-- **Extension**: counts scrolling on the sites of the rules and shows the pause screen in the page. It also redirects or blocks a few URLs that are nothing but a feed. It owns Chromium browsers and Firefox.
+- **Extension**: counts scrolling on the sites of the rules and shows the pause screen in the page. It also redirects or blocks feed URLs, hides Instagram Explore recommendations and keeps individual Reel links from becoming a feed. It owns Chromium browsers and Firefox.
 - **macOS app**: a local hub, not a second browser enforcer. It hands fresh rules to the extension without a reload, guards Safari (no unsigned Safari extension survives a restart without a paid developer account), and quits native apps that are all feed.
 - **Android app**: the phone is where the scrolling happens. An AccessibilityService receives only scroll and window-change events from the listed packages, with window content access off, so it cannot read the screen. VPN or DNS blocking cannot tell scrolling from reading a message: both come from the same hosts.
 

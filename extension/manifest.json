@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "grod",
-  "version": "0.1.0",
+  "version": "0.7.0",
   "description": "Get rid of distracting. Keep what matters. Pauses endless scrolling on feed sites, longer each time, and keeps the rest of each site.",
   "icons": {
     "16": "icons/grod-16.png",
@@ -26,8 +26,15 @@
       ],
       "js": [
         "lib/rules-core.js",
+        "lib/instagram.js",
         "content.js"
       ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://instagram.com/*", "https://www.instagram.com/*", "https://m.instagram.com/*"],
+      "css": ["ui/instagram.css"],
       "run_at": "document_start",
       "all_frames": false
     }
