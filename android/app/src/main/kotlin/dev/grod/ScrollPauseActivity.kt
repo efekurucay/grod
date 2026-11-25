@@ -1,6 +1,7 @@
 package dev.grod
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -9,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -16,9 +18,8 @@ import android.widget.TextView
 
 /**
  * The scroll pause screen (docs/rules.md, "Scroll pause"), started by [GrodService] in its own task
- * on top of the app. "Leave" goes home at any time; a pack (docs/rules.md, "Packs") while any are
- * left, and "Continue" after the countdown, uncover the app again. Leaving it any other way (Back,
- * Recents) counts as "Leave".
+ * on top of the app. "Leave" goes home at any time. A pack, a planned break, or "Continue" after
+ * the countdown uncovers the app again. Leaving it any other way (Back, Recents) counts as "Leave".
  */
 class ScrollPauseActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
@@ -79,6 +80,12 @@ class ScrollPauseActivity : Activity() {
             setPadding(0, ui.dp(24), 0, 0)
         }
         page.addView(buttons)
+        page.addView(ui.button("Plan a break") { planBreak() },
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                topMargin = ui.dp(12)
+            },
+        )
         setContentView(page)
         tick.run()
     }
@@ -117,21 +124,55 @@ class ScrollPauseActivity : Activity() {
         if (decided) return
         val store = PackStore(this)
         store.use = store.use.take(settings)
-        GrodService.session.startPack(SystemClock.elapsedRealtime(), settings.minutes)
+        GrodService.session.startBreak(SystemClock.elapsedRealtime(), settings.minutes)
         decide("pack")
     }
 
-    private fun decide(action: String) {
+    private fun planBreak() {
+        val duration = ui.input("Minutes").apply { inputType = InputType.TYPE_CLASS_NUMBER }
+        val intention = ui.input("What will you do?").apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        val fields = ui.column().apply {
+            setPadding(ui.dp(24), ui.dp(12), ui.dp(24), 0)
+            addView(duration)
+            addView(intention, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = ui.dp(8)
+            })
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Plan a break")
+            .setView(fields)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Start", null)
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val minutes = duration.text.toString().toIntOrNull()
+            val plan = intention.text.toString().trim()
+            when {
+                minutes == null || minutes <= 0 -> duration.error = "Enter a positive number of minutes"
+                plan.isEmpty() -> intention.error = "Enter what you will do"
+                !decided -> {
+                    GrodService.session.startBreak(SystemClock.elapsedRealtime(), minutes)
+                    dialog.dismiss()
+                    decide("planned-break", minutes * 60_000L, plan)
+                }
+            }
+        }
+    }
+
+    private fun decide(action: String, ms: Long? = null, intention: String? = null) {
         if (decided) return
         decided = true
-        log(action)
+        log(action, ms, intention)
         finish()
     }
 
-    private fun log(action: String) {
+    private fun log(action: String, ms: Long? = null, intention: String? = null) {
         val rule = intent.getStringExtra(EXTRA_RULE) ?: return
         val pkg = intent.getStringExtra(EXTRA_PKG) ?: return
-        LogWriter.get(this).append("events", LogLines.event(System.currentTimeMillis(), rule, pkg, action), RuleStore.get(this).rules.keepDays)
+        val event = LogLines.event(System.currentTimeMillis(), rule, pkg, action, ms = ms, intention = intention)
+        LogWriter.get(this).append("events", event, RuleStore.get(this).rules.keepDays)
     }
 
     /** Back would otherwise uncover the app before the wait is over. */

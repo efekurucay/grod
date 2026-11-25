@@ -81,7 +81,7 @@ class GrodService : AccessibilityService() {
             pause(pkg, rule, left, null, "returned")
             return
         }
-        if (!session.inPack(clock) && pkg in openingTargets) {
+        if (!session.inBreak(clock) && pkg in openingTargets) {
             watch.windowOver(pkg, now)?.let { reason ->
                 pause(pkg, rule, session.pauseNow(clock, rules.scroll), reason, "paused")
                 return

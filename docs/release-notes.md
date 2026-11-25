@@ -1,8 +1,7 @@
 ## What's new
 
-- **Instagram Explore keeps search.** The browser extension hides recommendation tiles on the Explore landing page while the Instagram rule is enabled. Search and its results stay available.
-- **Shared Reels stay on one video.** Open a Reel from a chat or a link and the extension stops Instagram from moving straight to the next one.
-- **Browser scroll pauses work from the release ZIP.** The download includes the pause screen and its script.
+- **Plan a break on Android.** Tap **Plan a break** on the scroll pause screen, enter how many minutes you need and what you intend to do, then tap **Start**. Scroll pauses resume after the break. This works even when your packs are empty, and the duration and intention are kept in grod's on-device history.
+- **Hide Instagram Explore recommendations on Android.** Turn on **grod · Instagram Explore** under Android's accessibility settings from grod's **Instagram Explore** settings. The service covers recommendations while the Instagram rule is enabled and keeps search available.
 
 ## Install
 

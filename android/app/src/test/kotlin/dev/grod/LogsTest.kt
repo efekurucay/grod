@@ -32,6 +32,17 @@ class LogsTest {
     }
 
     @Test
+    fun plannedBreakRecordsItsDurationAndIntention() {
+        val line = LogLines.event(3L, "instagram", "com.instagram.android", "planned-break",
+            ms = 180_000L, intention = "Reply to \"see you soon\"")
+        val event = JSONObject(line)
+        assertEquals("planned-break", event.getString("action"))
+        assertEquals(180_000L, event.getLong("ms"))
+        assertEquals("Reply to \"see you soon\"", event.getString("intention"))
+        assertFalse(event.has("purpose"))
+    }
+
+    @Test
     fun plansCompressionAndPruning() {
         val today = LocalDate.parse("2026-11-06")
         val names = listOf(

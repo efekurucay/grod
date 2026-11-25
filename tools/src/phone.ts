@@ -13,7 +13,7 @@ export type NotificationEvent = {
   held?: boolean;
   reason?: string;
 };
-export type RuleEvent = { t: number; rule: string; pkg: string; action: string; purpose?: string; ms?: number };
+export type RuleEvent = { t: number; rule: string; pkg: string; action: string; purpose?: string; ms?: number; intention?: string };
 export type Usage = { generated: number; days: Record<string, Record<string, number>> };
 
 const EXPORT_DIR = `/sdcard/Android/data/${ANDROID_PACKAGE}/files/export`;

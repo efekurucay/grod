@@ -165,25 +165,25 @@ class ScrollSessionTest {
     }
 
     @Test
-    fun aPackHoldsPausesForItsMinutesThenTheNextPauseComesAtOnce() {
+    fun aBreakHoldsPausesForTheChosenMinutesThenTheNextPauseComesAtOnce() {
         val session = ScrollSession()
         val (_, at) = scrollUntilPause(session, 0)
-        session.startPack(at, 5)
-        // The pause it was taken from is over, and five minutes of scrolling bring nothing.
+        session.startBreak(at, 3)
+        val end = at + 3 * 60_000L
+        // The pause it was taken from is over, and three minutes of scrolling bring nothing.
         assertNull(session.pauseLeft(at + 1_000))
-        for (t in at + 1_000 until at + 5 * 60_000 step 1_000) assertNull(session.scroll(t, defaults))
-        assertTrue(session.inPack(at + 5 * 60_000 - 1))
-        assertFalse(session.inPack(at + 5 * 60_000))
-        // The first scroll after it brings the next pause at once.
-        assertEquals(20, session.scroll(at + 5 * 60_000, defaults))
-        assertNull(session.scroll(at + 5 * 60_000 + 1_000, defaults))
+        for (t in at + 1_000 until end step 1_000) assertNull(session.scroll(t, defaults))
+        assertTrue(session.inBreak(end - 1))
+        assertFalse(session.inBreak(end))
+        assertEquals(20, session.scroll(end, defaults))
+        assertNull(session.scroll(end + 1_000, defaults))
     }
 
     @Test
-    fun aPackOverWhileTheSessionWentIdleBringsNoPause() {
+    fun aBreakOverWhileTheSessionWentIdleBringsNoPause() {
         val session = ScrollSession()
         val (_, at) = scrollUntilPause(session, 0)
-        session.startPack(at, 5)
+        session.startBreak(at, 5)
         // Back after resetMinutes without scrolling: a new session, counted from 0.
         val back = at + 20 * 60_000
         assertNull(session.scroll(back, defaults))
@@ -193,11 +193,11 @@ class ScrollSessionTest {
     }
 
     @Test
-    fun aPauseRightAfterAPackTakesItsPlace() {
+    fun aPauseRightAfterABreakTakesItsPlace() {
         val session = ScrollSession()
         val (_, at) = scrollUntilPause(session, 0)
-        session.startPack(at, 5)
-        // A quick window ran out during the pack: its pause comes first, and the pack's end brings no second one.
+        session.startBreak(at, 5)
+        // A quick window ran out during the break: its pause comes first, and the break's end brings no second one.
         assertEquals(20, session.pauseNow(at + 5 * 60_000, defaults))
         assertNull(session.scroll(at + 5 * 60_000 + 1_000, defaults))
     }

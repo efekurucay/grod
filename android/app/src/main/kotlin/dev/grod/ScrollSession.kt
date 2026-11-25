@@ -49,8 +49,8 @@ class ScrollSession {
     var sessionMs = 0L
         private set
 
-    /** When the pack taken on the pause screen ends (docs/rules.md, "Packs"), or null without one. */
-    private var packEndsAt: Long? = null
+    /** When a break taken on the pause screen ends, or null without one. */
+    private var breakEndsAt: Long? = null
 
     private var sincePauseMs = 0L
     private var pauses = 0
@@ -59,22 +59,22 @@ class ScrollSession {
     /** When the pause shown last ends. Leaving its screen does not end it, so coming back early shows it again. */
     private var pauseEndsAt = 0L
 
-    /** Seconds left of the pause shown last, or null when it is over (or a pack ended it). */
+    /** Seconds left of the pause shown last, or null when it is over or a break ended it. */
     fun pauseLeft(now: Long): Int? = ((pauseEndsAt - now + 999) / 1000).toInt().takeIf { it > 0 }
 
-    fun inPack(now: Long): Boolean = packEndsAt?.let { now < it } == true
+    fun inBreak(now: Long): Boolean = breakEndsAt?.let { now < it } == true
 
     /** Counts one scroll event; returns the pause length in seconds when a pause is due. */
     fun scroll(now: Long, settings: ScrollSettings): Int? {
         if (paused(now)) return null
-        packEndsAt?.let { end ->
-            // Scrolling in a pack counts for nothing, but it keeps the session from going idle.
+        breakEndsAt?.let { end ->
+            // Scrolling on a break counts for nothing, but it keeps the session from going idle.
             if (now < end) {
                 lastScrollAt = now
                 return null
             }
-            packEndsAt = null
-            // Still at it when the pack is over: the next pause comes at once.
+            breakEndsAt = null
+            // Still at it when the break is over: the next pause comes at once.
             val seen = lastScrollAt
             if (seen != null && now - seen < settings.resetMinutes * 60_000L) return pauseNow(now, settings)
         }
@@ -99,9 +99,9 @@ class ScrollSession {
         return nextPause(now, settings)
     }
 
-    /** A pack taken on the pause screen: the pause ends now and none comes for [minutes]. */
-    fun startPack(now: Long, minutes: Int) {
-        packEndsAt = now + minutes * 60_000L
+    /** A pack or planned break ends the pause now and holds further pauses for [minutes]. */
+    fun startBreak(now: Long, minutes: Int) {
+        breakEndsAt = now + minutes * 60_000L
         sincePauseMs = 0
         pauseEndsAt = 0
     }
@@ -118,8 +118,8 @@ class ScrollSession {
 
     private fun nextPause(now: Long, settings: ScrollSettings): Int {
         sincePauseMs = 0
-        // A pause right as a pack ends is the one its end would bring.
-        packEndsAt = null
+        // A pause right as a break ends is the one its end would bring.
+        breakEndsAt = null
         val seconds = min(settings.firstPauseSeconds * settings.growth.pow(pauses), settings.maxPauseSeconds.toDouble()).roundToInt()
         pauses++
         pauseEndsAt = now + seconds * 1000L
